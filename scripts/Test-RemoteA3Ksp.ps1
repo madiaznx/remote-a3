@@ -84,4 +84,6 @@ if (Test-Path -LiteralPath $providerInterface) {
     RegistryFunctions = $functions
     System32Dll       = Join-Path $env:WINDIR "System32\RemoteA3Ksp.dll"
     System32DllExists = Test-Path -LiteralPath (Join-Path $env:WINDIR "System32\RemoteA3Ksp.dll")
+    SysWow64Dll       = if ([Environment]::Is64BitOperatingSystem) { Join-Path $env:WINDIR "SysWOW64\RemoteA3Ksp.dll" } else { $null }
+    SysWow64DllExists = if ([Environment]::Is64BitOperatingSystem) { Test-Path -LiteralPath (Join-Path $env:WINDIR "SysWOW64\RemoteA3Ksp.dll") } else { $null }
 }
