@@ -563,11 +563,23 @@ static HRESULT WINAPI RA3GetKeyProperty(NCRYPT_PROV_HANDLE, NCRYPT_KEY_HANDLE hK
     if (_wcsicmp(property, NCRYPT_ALGORITHM_PROPERTY) == 0) {
         return WriteWideString(BCRYPT_RSA_ALGORITHM, output, outputSize, result);
     }
+    if (_wcsicmp(property, NCRYPT_ALGORITHM_GROUP_PROPERTY) == 0) {
+        return WriteWideString(NCRYPT_RSA_ALGORITHM_GROUP, output, outputSize, result);
+    }
     if (_wcsicmp(property, NCRYPT_LENGTH_PROPERTY) == 0) {
         return WriteDword(key->keyLength, output, outputSize, result);
     }
+    if (_wcsicmp(property, NCRYPT_PUBLIC_LENGTH_PROPERTY) == 0) {
+        return WriteDword(key->keyLength, output, outputSize, result);
+    }
+    if (_wcsicmp(property, NCRYPT_SIGNATURE_LENGTH_PROPERTY) == 0) {
+        return WriteDword(key->keyLength / 8, output, outputSize, result);
+    }
     if (_wcsicmp(property, NCRYPT_KEY_USAGE_PROPERTY) == 0) {
         return WriteDword(NCRYPT_ALLOW_SIGNING_FLAG, output, outputSize, result);
+    }
+    if (_wcsicmp(property, NCRYPT_KEY_TYPE_PROPERTY) == 0) {
+        return WriteDword(0, output, outputSize, result);
     }
     if (_wcsicmp(property, NCRYPT_EXPORT_POLICY_PROPERTY) == 0) {
         return WriteDword(0, output, outputSize, result);
