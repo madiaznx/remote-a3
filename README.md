@@ -122,6 +122,8 @@ Esse teste assina o hash de um arquivo. Ele ainda nao cria containers finais com
 
 A partir da `0.3.0`, o projeto inclui a primeira versao do **Remote A3 Key Storage Provider** para CNG. Ele e experimental e ainda precisa ser validado com os aplicativos reais.
 
+Nota: a partir da `0.3.5`, o registro do KSP publica corretamente a funcao CNG `KEY_STORAGE`. Se o `certutil` mostrar `Conjunto de chaves armazenadas ausente` em um certificado Remote A3 importado com versao anterior, reinstale a versao nova, execute novamente o **Remote A3 Install KSP Admin** e importe o certificado virtual de novo.
+
 Fluxo no PC atual:
 
 1. Instalar o setup que inclui os binarios nativos `RemoteA3Ksp.dll` e `RemoteA3KspAdmin.exe`.
