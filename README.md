@@ -17,6 +17,20 @@ Importar o certificado publico no PC atual nao basta. Para qualquer programa do 
 
 ## Uso rapido
 
+## Plug-and-play
+
+A partir da `0.4.8`, o instalador configura o Remote A3 automaticamente:
+
+- registra o KSP local, incluindo 64-bit e 32-bit;
+- sobe o agente local em `Ntlm` para liberar certificados com chave privada deste computador;
+- cria a tarefa `RemoteA3 Agent`;
+- cria a tarefa `RemoteA3 Auto Import`;
+- importa automaticamente certificados anunciados por outros computadores da intranet;
+- cria apenas um comando publico: `%LOCALAPPDATA%\RemoteA3\bin\remote-a3.cmd`;
+- cria a interface **Remote A3** no menu iniciar para ver de qual computador/agente veio cada certificado.
+
+O intervalo de 30 segundos e apenas o anuncio automatico entre computadores. O usuario nao precisa rodar recebedor manual.
+
 ## Instalacao automatica nos computadores com A3
 
 Instale o setup em cada computador que pode receber um token/cartao A3.
@@ -161,6 +175,8 @@ Nota: a partir da `0.4.5`, esse mesmo reparo tambem encerra automaticamente um p
 Nota: a partir da `0.4.6`, o setup inclui um modo de script sem terminal (`remote-a3-token-host-ntlm-silent.cmd`) para configurar o computador com token sem abrir PowerShell interativo.
 
 Nota: a partir da `0.4.7`, o setup inclui tambem a DLL 32-bit do KSP em `SysWOW64`, para aplicativos/hosts 32-bit como alguns componentes WebPKI conseguirem abrir a chave privada do certificado virtual.
+
+Nota: a partir da `0.4.8`, o fluxo passa a ser plug-and-play e inclui a interface Electron **Remote A3** para listar certificados virtuais e suas origens.
 
 Fluxo no PC atual:
 
