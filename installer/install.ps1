@@ -29,6 +29,21 @@ powershell.exe -NoProfile -ExecutionPolicy Bypass -File "%~dp0..\scripts\Invoke-
     "remote-a3-agent.cmd" = '@echo off
 powershell.exe -NoProfile -ExecutionPolicy Bypass -File "%~dp0..\scripts\Start-A3RemoteAgent.ps1" %*
 '
+    "remote-a3-auto-agent.cmd" = '@echo off
+powershell.exe -NoProfile -ExecutionPolicy Bypass -File "%~dp0..\scripts\Start-RemoteA3AutoAgent.ps1" %*
+'
+    "remote-a3-auto-register.cmd" = '@echo off
+powershell.exe -NoProfile -ExecutionPolicy Bypass -File "%~dp0..\scripts\Register-RemoteA3AutoStart.ps1" %*
+'
+    "remote-a3-auto-register-admin.cmd" = '@echo off
+powershell.exe -NoProfile -ExecutionPolicy Bypass -File "%~dp0..\scripts\Invoke-RemoteA3AutoRegisterAdmin.ps1"
+'
+    "remote-a3-find-port.cmd" = '@echo off
+powershell.exe -NoProfile -ExecutionPolicy Bypass -File "%~dp0..\scripts\Find-RemoteA3Port.ps1" %*
+'
+    "remote-a3-receive.cmd" = '@echo off
+powershell.exe -NoProfile -ExecutionPolicy Bypass -File "%~dp0..\scripts\Receive-RemoteA3Advertisements.ps1" %*
+'
     "remote-a3-sign.cmd" = '@echo off
 powershell.exe -NoProfile -ExecutionPolicy Bypass -File "%~dp0..\scripts\Invoke-RemoteA3Sign.ps1" %*
 '
@@ -46,6 +61,7 @@ param()
 `$ErrorActionPreference = "Stop"
 `$installDir = "$($InstallDir.Replace('"', '""'))"
 `$startMenu = Join-Path `$env:APPDATA "Microsoft\Windows\Start Menu\Programs\Remote A3"
+Unregister-ScheduledTask -TaskName "RemoteA3 Agent" -Confirm:`$false -ErrorAction SilentlyContinue
 Remove-Item -LiteralPath `$startMenu -Recurse -Force -ErrorAction SilentlyContinue
 Remove-Item -LiteralPath `$installDir -Recurse -Force -ErrorAction SilentlyContinue
 Write-Host "Remote A3 removido."
@@ -88,6 +104,14 @@ New-RemoteA3Shortcut `
     -Arguments "-NoExit -NoProfile -ExecutionPolicy Bypass -File `"$InstallDir\scripts\Configure-RemoteA3AgentHost.ps1`""
 
 New-RemoteA3Shortcut `
+    -Name "Remote A3 Auto Register Admin.lnk" `
+    -Arguments "-NoExit -NoProfile -ExecutionPolicy Bypass -File `"$InstallDir\scripts\Invoke-RemoteA3AutoRegisterAdmin.ps1`""
+
+New-RemoteA3Shortcut `
+    -Name "Remote A3 Receive Advertisements.lnk" `
+    -Arguments "-NoExit -NoProfile -ExecutionPolicy Bypass -File `"$InstallDir\scripts\Receive-RemoteA3Advertisements.ps1`" -Seconds 30"
+
+New-RemoteA3Shortcut `
     -Name "Remote A3 Uninstall.lnk" `
     -Arguments "-NoExit -NoProfile -ExecutionPolicy Bypass -File `"$uninstallPath`""
 
@@ -100,5 +124,4 @@ $readmeShortcut.Save()
 
 Write-Host "Remote A3 instalado em: $InstallDir"
 Write-Host "Atalhos criados em: $startMenuDir"
-Write-Host "Para usar no PC com token, execute o atalho 'Remote A3 Configure Host Admin' como administrador e depois inicie o agente."
-
+Write-Host "Para usar no PC com token, execute o atalho 'Remote A3 Auto Register Admin' como administrador."
