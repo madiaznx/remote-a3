@@ -53,6 +53,15 @@ powershell.exe -NoProfile -ExecutionPolicy Bypass -File "%~dp0..\scripts\Get-Rem
     "remote-a3-stop.cmd" = '@echo off
 powershell.exe -NoProfile -ExecutionPolicy Bypass -File "%~dp0..\scripts\Stop-RemoteA3Agent.ps1" %*
 '
+    "remote-a3-install-ksp.cmd" = '@echo off
+powershell.exe -NoProfile -ExecutionPolicy Bypass -File "%~dp0..\scripts\Install-RemoteA3Ksp.ps1" %*
+'
+    "remote-a3-install-virtual-cert.cmd" = '@echo off
+powershell.exe -NoProfile -ExecutionPolicy Bypass -File "%~dp0..\scripts\Install-RemoteA3VirtualCertificate.ps1" %*
+'
+    "remote-a3-test-virtual-cert.cmd" = '@echo off
+powershell.exe -NoProfile -ExecutionPolicy Bypass -File "%~dp0..\scripts\Test-RemoteA3VirtualCertificate.ps1" %*
+'
 }
 
 foreach ($entry in $launchers.GetEnumerator()) {
@@ -120,6 +129,10 @@ New-RemoteA3Shortcut `
 New-RemoteA3Shortcut `
     -Name "Remote A3 Status.lnk" `
     -Arguments "-NoExit -NoProfile -ExecutionPolicy Bypass -File `"$InstallDir\scripts\Get-RemoteA3AgentStatus.ps1`""
+
+New-RemoteA3Shortcut `
+    -Name "Remote A3 Install KSP Admin.lnk" `
+    -Arguments "-NoExit -NoProfile -ExecutionPolicy Bypass -File `"$InstallDir\scripts\Install-RemoteA3Ksp.ps1`""
 
 New-RemoteA3Shortcut `
     -Name "Remote A3 Stop Agent.lnk" `
