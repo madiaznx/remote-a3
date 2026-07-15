@@ -178,6 +178,8 @@ Nota: a partir da `0.4.7`, o setup inclui tambem a DLL 32-bit do KSP em `SysWOW6
 
 Nota: a partir da `0.4.8`, o fluxo passa a ser plug-and-play e inclui a interface Electron **Remote A3** para listar certificados virtuais e suas origens.
 
+Nota: a partir da `0.4.9`, o setup plug-and-play registra a importacao automatica mesmo quando uma etapa anterior falha, por exemplo DLL do KSP em uso ate reiniciar o Windows.
+
 Fluxo no PC atual:
 
 1. Instalar o setup que inclui os binarios nativos `RemoteA3Ksp.dll` e `RemoteA3KspAdmin.exe`.
