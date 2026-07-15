@@ -157,7 +157,7 @@ public static class RemoteA3CertLink
     {
         if (string.IsNullOrWhiteSpace(targetName))
         {
-            throw new ArgumentException("targetName vazio", nameof(targetName));
+            throw new ArgumentException("targetName vazio", "targetName");
         }
 
         if (userName == null)
