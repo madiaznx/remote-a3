@@ -66,6 +66,7 @@ catch {
 }
 
 $containerName = "remote-a3-$cleanThumbprint"
+$credentialTarget = "RemoteA3:$containerName"
 $installRoot = Join-Path $env:LOCALAPPDATA "RemoteA3"
 $keysDir = Join-Path $installRoot "keys"
 New-Item -ItemType Directory -Path $keysDir -Force | Out-Null
@@ -77,6 +78,7 @@ $keyConfig = @(
     "scope=$RemoteScope"
     "storeName=$RemoteStoreName"
     "keyLength=$keyLength"
+    "credentialTarget=$credentialTarget"
     "publicCertificateBase64=$($remoteCertificate.PublicCertificateBase64)"
 )
 Set-Content -LiteralPath $keyConfigPath -Value $keyConfig -Encoding ASCII
@@ -85,12 +87,15 @@ $pinvoke = @'
 using System;
 using System.ComponentModel;
 using System.Runtime.InteropServices;
+using System.Text;
 using System.Security.Cryptography.X509Certificates;
 
 public static class RemoteA3CertLink
 {
     private const int CERT_KEY_PROV_INFO_PROP_ID = 2;
     private const int CERT_NCRYPT_KEY_SPEC = unchecked((int)0xffffffff);
+    private const int CRED_TYPE_GENERIC = 1;
+    private const int CRED_PERSIST_LOCAL_MACHINE = 2;
 
     [StructLayout(LayoutKind.Sequential, CharSet = CharSet.Unicode)]
     private struct CRYPT_KEY_PROV_INFO
@@ -111,6 +116,26 @@ public static class RemoteA3CertLink
         int dwFlags,
         ref CRYPT_KEY_PROV_INFO pvData);
 
+    [StructLayout(LayoutKind.Sequential, CharSet = CharSet.Unicode)]
+    private struct CREDENTIAL
+    {
+        public int Flags;
+        public int Type;
+        public string TargetName;
+        public string Comment;
+        public long LastWritten;
+        public int CredentialBlobSize;
+        public IntPtr CredentialBlob;
+        public int Persist;
+        public int AttributeCount;
+        public IntPtr Attributes;
+        public string TargetAlias;
+        public string UserName;
+    }
+
+    [DllImport("advapi32.dll", EntryPoint = "CredWriteW", CharSet = CharSet.Unicode, SetLastError = true)]
+    private static extern bool CredWrite(ref CREDENTIAL credential, int flags);
+
     public static void SetCngProvider(X509Certificate2 certificate, string containerName, string providerName)
     {
         var info = new CRYPT_KEY_PROV_INFO();
@@ -127,11 +152,60 @@ public static class RemoteA3CertLink
             throw new Win32Exception(Marshal.GetLastWin32Error());
         }
     }
+
+    public static void WriteGenericCredential(string targetName, string userName, string password)
+    {
+        if (string.IsNullOrWhiteSpace(targetName))
+        {
+            throw new ArgumentException("targetName vazio", nameof(targetName));
+        }
+
+        if (userName == null)
+        {
+            userName = string.Empty;
+        }
+
+        if (password == null)
+        {
+            password = string.Empty;
+        }
+
+        IntPtr passwordPtr = Marshal.StringToCoTaskMemUni(password);
+        try
+        {
+            var credential = new CREDENTIAL();
+            credential.Type = CRED_TYPE_GENERIC;
+            credential.TargetName = targetName;
+            credential.CredentialBlobSize = Encoding.Unicode.GetByteCount(password);
+            credential.CredentialBlob = passwordPtr;
+            credential.Persist = CRED_PERSIST_LOCAL_MACHINE;
+            credential.UserName = userName;
+
+            if (!CredWrite(ref credential, 0))
+            {
+                throw new Win32Exception(Marshal.GetLastWin32Error());
+            }
+        }
+        finally
+        {
+            Marshal.ZeroFreeCoTaskMemUnicode(passwordPtr);
+        }
+    }
 }
 '@
 
 if (-not ("RemoteA3CertLink" -as [type])) {
     Add-Type -TypeDefinition $pinvoke
+}
+
+$credentialSaved = $false
+if ($null -ne $Credential) {
+    $networkCredential = $Credential.GetNetworkCredential()
+    [RemoteA3CertLink]::WriteGenericCredential(
+        $credentialTarget,
+        $Credential.UserName,
+        $networkCredential.Password)
+    $credentialSaved = $true
 }
 
 $store = New-Object System.Security.Cryptography.X509Certificates.X509Store($StoreName, $StoreLocation)
@@ -159,5 +233,7 @@ finally {
     ProviderName   = $ProviderName
     ContainerName  = $containerName
     KeyConfigPath  = $keyConfigPath
+    CredentialTarget = $credentialTarget
+    CredentialSaved = $credentialSaved
     TestCommand    = "certutil -user -store My $cleanThumbprint"
 }
