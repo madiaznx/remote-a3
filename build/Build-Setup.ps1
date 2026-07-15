@@ -47,9 +47,23 @@ foreach ($item in $payloadItems) {
     }
 }
 
+$uiSource = Join-Path $repoRoot "ui"
+if (Test-Path -LiteralPath $uiSource) {
+    $uiDestination = Join-Path $payloadDir "ui"
+    New-Item -ItemType Directory -Path $uiDestination -Force | Out-Null
+    Get-ChildItem -LiteralPath $uiSource -File | ForEach-Object {
+        Copy-Item -LiteralPath $_.FullName -Destination (Join-Path $uiDestination $_.Name) -Force
+    }
+}
+
 $nativeOutput = Join-Path $repoRoot "dist\native"
 if (Test-Path -LiteralPath $nativeOutput) {
     Copy-Item -Path (Join-Path $nativeOutput "*") -Destination (Join-Path $payloadDir "native") -Recurse -Force
+}
+
+$electronOutput = Join-Path $repoRoot "dist\electron"
+if (Test-Path -LiteralPath $electronOutput) {
+    Copy-Item -Path (Join-Path $electronOutput "*") -Destination (Join-Path $payloadDir "electron") -Recurse -Force
 }
 
 $sourceZip = Join-Path $outputDirResolved "RemoteA3-v$Version-source.zip"
