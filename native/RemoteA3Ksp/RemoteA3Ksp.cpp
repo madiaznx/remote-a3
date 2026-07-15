@@ -102,6 +102,10 @@ typedef struct _NCRYPT_KEY_STORAGE_FUNCTION_TABLE {
 #define CREDUI_FLAGS_EXCLUDE_CERTIFICATES 0x00000008
 #endif
 
+#ifndef CREDUI_FLAGS_PASSWORD_ONLY_OK
+#define CREDUI_FLAGS_PASSWORD_ONLY_OK 0x00000200
+#endif
+
 #ifndef CREDUI_FLAGS_ALWAYS_SHOW_UI
 #define CREDUI_FLAGS_ALWAYS_SHOW_UI 0x00000080
 #endif
@@ -376,9 +380,12 @@ static HRESULT PromptForPin(KeyContext& key, DWORD flags)
     wchar_t password[CREDUI_MAX_PASSWORD_LENGTH + 1]{};
     BOOL save = FALSE;
 
+    wcsncpy_s(username, ARRAYSIZE(username), L"RemoteA3", _TRUNCATE);
+
     DWORD promptFlags =
         CREDUI_FLAGS_DO_NOT_PERSIST |
         CREDUI_FLAGS_EXCLUDE_CERTIFICATES |
+        CREDUI_FLAGS_PASSWORD_ONLY_OK |
         CREDUI_FLAGS_GENERIC_CREDENTIALS |
         CREDUI_FLAGS_ALWAYS_SHOW_UI;
 
@@ -393,6 +400,26 @@ static HRESULT PromptForPin(KeyContext& key, DWORD flags)
         ARRAYSIZE(password),
         &save,
         promptFlags);
+
+    if (result == ERROR_INVALID_FLAGS) {
+        promptFlags =
+            CREDUI_FLAGS_DO_NOT_PERSIST |
+            CREDUI_FLAGS_EXCLUDE_CERTIFICATES |
+            CREDUI_FLAGS_PASSWORD_ONLY_OK |
+            CREDUI_FLAGS_GENERIC_CREDENTIALS;
+
+        result = prompt(
+            &info,
+            L"RemoteA3",
+            nullptr,
+            0,
+            username,
+            ARRAYSIZE(username),
+            password,
+            ARRAYSIZE(password),
+            &save,
+            promptFlags);
+    }
 
     if (result == ERROR_INVALID_FLAGS) {
         promptFlags =
