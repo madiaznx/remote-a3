@@ -116,6 +116,13 @@ public static class RemoteA3CertLink
         int dwFlags,
         ref CRYPT_KEY_PROV_INFO pvData);
 
+    [DllImport("crypt32.dll", SetLastError = true)]
+    private static extern bool CertGetCertificateContextProperty(
+        IntPtr pCertContext,
+        int dwPropId,
+        IntPtr pvData,
+        ref int pcbData);
+
     [StructLayout(LayoutKind.Sequential, CharSet = CharSet.Unicode)]
     private struct CREDENTIAL
     {
@@ -150,6 +157,31 @@ public static class RemoteA3CertLink
         if (!CertSetCertificateContextProperty(certificate.Handle, CERT_KEY_PROV_INFO_PROP_ID, 0, ref info))
         {
             throw new Win32Exception(Marshal.GetLastWin32Error());
+        }
+    }
+
+    public static string GetKeyProviderName(X509Certificate2 certificate)
+    {
+        int size = 0;
+        if (!CertGetCertificateContextProperty(certificate.Handle, CERT_KEY_PROV_INFO_PROP_ID, IntPtr.Zero, ref size))
+        {
+            return null;
+        }
+
+        IntPtr buffer = Marshal.AllocHGlobal(size);
+        try
+        {
+            if (!CertGetCertificateContextProperty(certificate.Handle, CERT_KEY_PROV_INFO_PROP_ID, buffer, ref size))
+            {
+                return null;
+            }
+
+            var info = (CRYPT_KEY_PROV_INFO)Marshal.PtrToStructure(buffer, typeof(CRYPT_KEY_PROV_INFO));
+            return info.pwszProvName;
+        }
+        finally
+        {
+            Marshal.FreeHGlobal(buffer);
         }
     }
 
@@ -216,6 +248,13 @@ try {
         $certificate.FriendlyName = "Remote A3 - $($certificate.Subject)"
         $store.Add($certificate)
         $existing = @($store.Certificates | Where-Object { (($_.Thumbprint -replace "\s", "").ToUpperInvariant()) -eq $cleanThumbprint }) | Select-Object -First 1
+    }
+
+    $existingProviderName = [RemoteA3CertLink]::GetKeyProviderName($existing)
+    if ($existing.HasPrivateKey -and
+        -not [string]::IsNullOrWhiteSpace($existingProviderName) -and
+        $existingProviderName -ne $ProviderName) {
+        throw "Certificado $cleanThumbprint ja existe neste computador com chave privada local/provider '$existingProviderName'. Nao vou substituir por Remote A3 automaticamente."
     }
 
     [RemoteA3CertLink]::SetCngProvider($existing, $containerName, $ProviderName)
