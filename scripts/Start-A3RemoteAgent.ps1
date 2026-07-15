@@ -9,7 +9,15 @@ param(
 
     [string[]]$AllowedGroups,
 
-    [switch]$IncludeAllCertificates
+    [switch]$IncludeAllCertificates,
+
+    [switch]$Advertise,
+
+    [string]$PublicHostName = $env:COMPUTERNAME,
+
+    [int]$AdvertisementPort = 28764,
+
+    [int]$AdvertisementIntervalSeconds = 30
 )
 
 Set-StrictMode -Version 2.0
@@ -259,9 +267,93 @@ function Invoke-AgentSignHash {
     }
 }
 
+function Get-AgentPortFromPrefix {
+    param(
+        [Parameter(Mandatory = $true)]
+        [string]$ListenerPrefix
+    )
+
+    $match = [regex]::Match($ListenerPrefix, ":(\d+)/")
+    if (-not $match.Success) {
+        return 80
+    }
+
+    return [int]$match.Groups[1].Value
+}
+
+function Get-AgentSchemeFromPrefix {
+    param(
+        [Parameter(Mandatory = $true)]
+        [string]$ListenerPrefix
+    )
+
+    if ($ListenerPrefix -match "^(https?)://") {
+        return $Matches[1]
+    }
+
+    return "http"
+}
+
+function Start-AgentAdvertiser {
+    param(
+        [Parameter(Mandatory = $true)]
+        [string]$AgentUrl,
+
+        [Parameter(Mandatory = $true)]
+        [int]$Port,
+
+        [Parameter(Mandatory = $true)]
+        [int]$IntervalSeconds
+    )
+
+    $scriptBlock = {
+        param(
+            [string]$AdvertisedAgentUrl,
+            [int]$UdpPort,
+            [int]$Interval
+        )
+
+        $udp = New-Object System.Net.Sockets.UdpClient
+        $udp.EnableBroadcast = $true
+        $endpoint = New-Object System.Net.IPEndPoint([System.Net.IPAddress]::Broadcast, $UdpPort)
+
+        try {
+            while ($true) {
+                $payload = @{
+                    protocol     = "remote-a3"
+                    version      = 1
+                    machineName  = $env:COMPUTERNAME
+                    userName     = if ($env:USERDOMAIN) { "$($env:USERDOMAIN)\$($env:USERNAME)" } else { $env:USERNAME }
+                    agentUrl     = $AdvertisedAgentUrl
+                    port         = ([Uri]$AdvertisedAgentUrl).Port
+                    timestampUtc = (Get-Date).ToUniversalTime().ToString("o")
+                } | ConvertTo-Json -Depth 4 -Compress
+
+                $bytes = [System.Text.Encoding]::UTF8.GetBytes($payload)
+                [void]$udp.Send($bytes, $bytes.Length, $endpoint)
+                Start-Sleep -Seconds $Interval
+            }
+        }
+        finally {
+            $udp.Close()
+        }
+    }
+
+    Start-Job -ScriptBlock $scriptBlock -ArgumentList $AgentUrl, $Port, $IntervalSeconds
+}
+
 if (-not $Prefix.EndsWith("/")) {
     $Prefix = "$Prefix/"
 }
+
+$agentPort = Get-AgentPortFromPrefix -ListenerPrefix $Prefix
+$agentScheme = Get-AgentSchemeFromPrefix -ListenerPrefix $Prefix
+if ([string]::IsNullOrWhiteSpace($PublicHostName) -or $PublicHostName -eq "+" -or $PublicHostName -eq "*") {
+    $PublicHostName = $env:COMPUTERNAME
+}
+
+$advertisedAgentUrl = "${agentScheme}://${PublicHostName}:$agentPort/"
+$advertiserJob = $null
 
 $listener = New-Object System.Net.HttpListener
 $listener.Prefixes.Add($Prefix)
@@ -275,6 +367,10 @@ catch {
 }
 
 Write-Host "Remote A3 Agent ouvindo em $Prefix com autenticacao $Authentication"
+if ($Advertise) {
+    $advertiserJob = Start-AgentAdvertiser -AgentUrl $advertisedAgentUrl -Port $AdvertisementPort -IntervalSeconds $AdvertisementIntervalSeconds
+    Write-Host "Anunciando $advertisedAgentUrl via UDP $AdvertisementPort a cada $AdvertisementIntervalSeconds segundos."
+}
 Write-Host "Pressione Ctrl+C para encerrar."
 
 try {
@@ -298,6 +394,8 @@ try {
                         ok          = $true
                         machineName = $env:COMPUTERNAME
                         userName    = if ($env:USERDOMAIN) { "$($env:USERDOMAIN)\$($env:USERNAME)" } else { $env:USERNAME }
+                        agentUrl    = $advertisedAgentUrl
+                        advertising = [bool]$Advertise
                     }
                 }
 
@@ -333,7 +431,11 @@ try {
     }
 }
 finally {
+    if ($null -ne $advertiserJob) {
+        Stop-Job -Job $advertiserJob -ErrorAction SilentlyContinue
+        Remove-Job -Job $advertiserJob -Force -ErrorAction SilentlyContinue
+    }
+
     $listener.Stop()
     $listener.Close()
 }
-
