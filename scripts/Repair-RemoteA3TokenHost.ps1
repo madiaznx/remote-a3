@@ -72,6 +72,133 @@ function Resolve-RemoteA3ScriptDir {
     throw "Register-RemoteA3AutoStart.ps1 nao encontrado. Instale o Remote A3 neste computador primeiro."
 }
 
+function Get-ListeningPortOwnerPid {
+    param(
+        [Parameter(Mandatory = $true)]
+        [int]$LocalPort
+    )
+
+    $getNetTcpConnection = Get-Command Get-NetTCPConnection -ErrorAction SilentlyContinue
+    if ($null -eq $getNetTcpConnection) {
+        return @()
+    }
+
+    @(Get-NetTCPConnection -LocalPort $LocalPort -State Listen -ErrorAction SilentlyContinue |
+        Where-Object { $null -ne $_.OwningProcess -and $_.OwningProcess -ne 0 } |
+        Select-Object -ExpandProperty OwningProcess -Unique)
+}
+
+function Get-ProcessDetails {
+    param(
+        [Parameter(Mandatory = $true)]
+        [int]$ProcessId
+    )
+
+    $process = Get-Process -Id $ProcessId -ErrorAction SilentlyContinue
+    $commandLine = $null
+
+    try {
+        $cimProcess = Get-CimInstance Win32_Process -Filter "ProcessId=$ProcessId" -ErrorAction Stop
+        $commandLine = $cimProcess.CommandLine
+    }
+    catch {
+        $commandLine = $null
+    }
+
+    [pscustomobject]@{
+        ProcessId   = $ProcessId
+        ProcessName = if ($null -ne $process) { $process.ProcessName } else { $null }
+        CommandLine = $commandLine
+    }
+}
+
+function Test-IsRemoteA3Process {
+    param(
+        [Parameter(Mandatory = $true)]
+        [object]$ProcessDetails
+    )
+
+    $text = "$($ProcessDetails.ProcessName) $($ProcessDetails.CommandLine)"
+    return $text -match "(?i)(RemoteA3|Remote A3|Start-A3RemoteAgent|Start-RemoteA3AutoAgent|remote-a3)"
+}
+
+function Stop-RemoteA3PortOwner {
+    param(
+        [Parameter(Mandatory = $true)]
+        [int]$LocalPort
+    )
+
+    $stopped = @()
+    $blocked = @()
+    $ownerPids = @(Get-ListeningPortOwnerPid -LocalPort $LocalPort)
+
+    foreach ($ownerPid in $ownerPids) {
+        if ($ownerPid -eq $PID) {
+            continue
+        }
+
+        $details = Get-ProcessDetails -ProcessId $ownerPid
+        if (Test-IsRemoteA3Process -ProcessDetails $details) {
+            Write-Host "Encerrando processo antigo do Remote A3 na porta ${LocalPort}: PID $ownerPid"
+            Stop-Process -Id $ownerPid -Force -ErrorAction Stop
+            $stopped += $ownerPid
+        }
+        else {
+            $blocked += $details
+        }
+    }
+
+    if ($stopped.Count -gt 0) {
+        for ($i = 0; $i -lt 20; $i++) {
+            Start-Sleep -Milliseconds 500
+            $remaining = @(Get-ListeningPortOwnerPid -LocalPort $LocalPort | Where-Object { $_ -notin $blocked.ProcessId })
+            if ($remaining.Count -eq 0) {
+                break
+            }
+        }
+    }
+
+    [pscustomobject]@{
+        Stopped = $stopped
+        Blocked = $blocked
+    }
+}
+
+function Get-RemoteA3AuthChallenge {
+    param(
+        [Parameter(Mandatory = $true)]
+        [string]$Uri
+    )
+
+    $request = [System.Net.HttpWebRequest]::Create($Uri)
+    $request.Method = "GET"
+    $request.Timeout = 3000
+    $request.AllowAutoRedirect = $false
+
+    try {
+        $response = $request.GetResponse()
+        try {
+            return $response.Headers["WWW-Authenticate"]
+        }
+        finally {
+            $response.Dispose()
+        }
+    }
+    catch [System.Net.WebException] {
+        if ($null -ne $_.Exception.Response) {
+            $response = $_.Exception.Response
+            try {
+                return $response.Headers["WWW-Authenticate"]
+            }
+            finally {
+                $response.Dispose()
+            }
+        }
+
+        return $null
+    }
+}
+
 $scriptPath = Get-CurrentScriptPath
 
 if (-not (Test-IsAdministrator)) {
@@ -140,6 +267,15 @@ if ($null -ne $oldTask -and $oldTask.State -eq "Running") {
     }
 }
 
+$portOwnerResult = Stop-RemoteA3PortOwner -LocalPort $Port
+if ($portOwnerResult.Blocked.Count -gt 0) {
+    $blockedText = ($portOwnerResult.Blocked | ForEach-Object {
+        "PID $($_.ProcessId) $($_.ProcessName): $($_.CommandLine)"
+    }) -join "; "
+
+    throw "A porta $Port continua ocupada por processo que nao parece ser do Remote A3: $blockedText"
+}
+
 $registerArgs = @{
     Port           = $Port
     Authentication = $Authentication
@@ -159,12 +295,14 @@ $config = Get-Content -LiteralPath $configPath -Raw | ConvertFrom-Json
 $health = $null
 $healthError = $null
 $healthUri = "http://localhost:$($config.port)/health"
+$authChallenge = $null
 
 if (-not $NoStart) {
     $deadline = (Get-Date).AddSeconds($HealthTimeoutSeconds)
     do {
         try {
             $health = Invoke-RestMethod -Uri $healthUri -UseDefaultCredentials -TimeoutSec 3
+            $authChallenge = Get-RemoteA3AuthChallenge -Uri $healthUri
             break
         }
         catch {
@@ -188,10 +326,12 @@ else {
     Port           = [int]$config.port
     Authentication = [string]$config.authentication
     AgentUrl       = if ($null -ne $health) { [string]$health.agentUrl } else { $null }
+    AuthChallenge  = $authChallenge
     HealthOk       = if ($null -ne $health) { [bool]$health.ok } else { $false }
     HealthError    = $healthError
     TaskName       = $TaskName
     TaskState      = if ($null -ne $task) { $task.State } else { $null }
     LastTaskResult = if ($null -ne $taskInfo) { $taskInfo.LastTaskResult } else { $null }
+    StoppedPids    = $portOwnerResult.Stopped
     ConfigPath     = $configPath
 }
