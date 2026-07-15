@@ -1,0 +1,25 @@
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio Version 17
+VisualStudioVersion = 17.0.31903.59
+MinimumVisualStudioVersion = 10.0.40219.1
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "RemoteA3Ksp", "RemoteA3Ksp\RemoteA3Ksp.vcxproj", "{9A09A3AC-0286-48A9-9427-2F7BC412BD49}"
+EndProject
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "RemoteA3KspAdmin", "RemoteA3KspAdmin\RemoteA3KspAdmin.vcxproj", "{982E08E7-AF6F-431A-92D0-950C156D4391}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|x64 = Debug|x64
+		Release|x64 = Release|x64
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{9A09A3AC-0286-48A9-9427-2F7BC412BD49}.Debug|x64.ActiveCfg = Debug|x64
+		{9A09A3AC-0286-48A9-9427-2F7BC412BD49}.Debug|x64.Build.0 = Debug|x64
+		{9A09A3AC-0286-48A9-9427-2F7BC412BD49}.Release|x64.ActiveCfg = Release|x64
+		{9A09A3AC-0286-48A9-9427-2F7BC412BD49}.Release|x64.Build.0 = Release|x64
+		{982E08E7-AF6F-431A-92D0-950C156D4391}.Debug|x64.ActiveCfg = Debug|x64
+		{982E08E7-AF6F-431A-92D0-950C156D4391}.Debug|x64.Build.0 = Debug|x64
+		{982E08E7-AF6F-431A-92D0-950C156D4391}.Release|x64.ActiveCfg = Release|x64
+		{982E08E7-AF6F-431A-92D0-950C156D4391}.Release|x64.Build.0 = Release|x64
+	EndGlobalSection
+EndGlobal
+
