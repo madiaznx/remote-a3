@@ -1,0 +1,15 @@
+{
+  "name": "remote-a3-ui",
+  "version": "0.4.8",
+  "private": true,
+  "description": "Remote A3 desktop interface",
+  "main": "main.js",
+  "scripts": {
+    "start": "electron .",
+    "package": "electron-packager . \"Remote A3\" --platform=win32 --arch=x64 --out=../dist/electron --overwrite --icon=../assets/remote-a3.ico --asar"
+  },
+  "devDependencies": {
+    "@electron/packager": "^18.4.4",
+    "electron": "^43.1.1"
+  }
+}
