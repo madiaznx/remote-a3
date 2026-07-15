@@ -1,0 +1,72 @@
+<!doctype html>
+<html lang="pt-BR">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Remote A3</title>
+    <link rel="stylesheet" href="./styles.css" />
+  </head>
+  <body>
+    <main class="shell">
+      <header class="topbar">
+        <div>
+          <h1>Remote A3</h1>
+          <p id="subtitle">Carregando certificados...</p>
+        </div>
+        <div class="actions">
+          <button id="setupButton" type="button">Reparar</button>
+          <button id="refreshButton" type="button">Atualizar</button>
+        </div>
+      </header>
+
+      <section class="status-grid" aria-label="Status">
+        <div class="status-item">
+          <span>Agente</span>
+          <strong id="agentStatus">-</strong>
+        </div>
+        <div class="status-item">
+          <span>Importacao</span>
+          <strong id="importStatus">-</strong>
+        </div>
+        <div class="status-item">
+          <span>KSP</span>
+          <strong id="kspStatus">-</strong>
+        </div>
+        <div class="status-item">
+          <span>Certificados</span>
+          <strong id="certCount">0</strong>
+        </div>
+      </section>
+
+      <section class="table-panel">
+        <div class="table-header">
+          <h2>Certificados</h2>
+          <span id="lastUpdated"></span>
+        </div>
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>Titular</th>
+                <th>Origem</th>
+                <th>Agente</th>
+                <th>Validade</th>
+                <th>Chave</th>
+              </tr>
+            </thead>
+            <tbody id="certTableBody"></tbody>
+          </table>
+        </div>
+        <div id="emptyState" class="empty-state">Nenhum certificado remoto importado ainda.</div>
+      </section>
+
+      <section class="logs">
+        <button class="link-button" id="openAutoImportLog" type="button">Log de importacao</button>
+        <button class="link-button" id="openKspLog" type="button">Log do KSP</button>
+        <button class="link-button" id="openSetupLog" type="button">Log de setup</button>
+      </section>
+    </main>
+
+    <script src="./renderer.js"></script>
+  </body>
+</html>
