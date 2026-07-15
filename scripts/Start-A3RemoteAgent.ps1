@@ -105,10 +105,10 @@ function Get-AgentCertificateInventory {
     }
 
     if ($IncludeAllCertificates) {
-        & $inventoryPath -Scope Both -StoreName My -IncludePublicCertificate
+        & $inventoryPath -Scope Both -StoreName My -IncludePublicCertificate | Where-Object { -not $_.IsRemoteA3Virtual }
     }
     else {
-        & $inventoryPath -Scope Both -StoreName My -OnlyWithPrivateKey -IncludePublicCertificate
+        & $inventoryPath -Scope Both -StoreName My -OnlyWithPrivateKey -IncludePublicCertificate | Where-Object { -not $_.IsRemoteA3Virtual }
     }
 }
 
