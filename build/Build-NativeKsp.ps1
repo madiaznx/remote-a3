@@ -19,7 +19,7 @@ if (-not (Test-Path -LiteralPath $vswhere)) {
     throw "vswhere.exe nao encontrado. Instale Visual Studio Build Tools com workload C++."
 }
 
-$msbuild = & $vswhere -latest -requires Microsoft.Component.MSBuild -find "MSBuild\**\Bin\MSBuild.exe" | Select-Object -First 1
+$msbuild = & $vswhere -latest -products * -requires Microsoft.Component.MSBuild -find "MSBuild\**\Bin\MSBuild.exe" | Select-Object -First 1
 if ([string]::IsNullOrWhiteSpace($msbuild)) {
     throw "MSBuild nao encontrado. Instale Visual Studio Build Tools."
 }
@@ -30,4 +30,3 @@ if ($LASTEXITCODE -ne 0) {
 }
 
 Get-ChildItem -LiteralPath (Join-Path $repoRoot "dist\native\$Platform\$Configuration") | Select-Object FullName,Length
-
