@@ -3,7 +3,7 @@ param(
     [ValidateSet("Debug", "Release")]
     [string]$Configuration = "Release",
 
-    [ValidateSet("x64")]
+    [ValidateSet("x64", "Win32")]
     [string]$Platform = "x64"
 )
 
