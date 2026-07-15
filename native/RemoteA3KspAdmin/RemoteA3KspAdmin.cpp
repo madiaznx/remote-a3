@@ -1,15 +1,14 @@
 #include <windows.h>
 #include <bcrypt.h>
+#include <ncrypt.h>
 #include <iostream>
 
 #pragma comment(lib, "bcrypt.lib")
 
-#ifndef NCRYPT_INTERFACE
-#define NCRYPT_INTERFACE 0x00010001
-#endif
-
 typedef NTSTATUS(NTAPI* BCryptRegisterProviderPtr)(LPCWSTR, ULONG, PCRYPT_PROVIDER_REG);
 typedef NTSTATUS(NTAPI* BCryptUnregisterProviderPtr)(LPCWSTR);
+typedef NTSTATUS(NTAPI* BCryptAddContextFunctionPtr)(ULONG, LPCWSTR, ULONG, LPCWSTR, ULONG);
+typedef NTSTATUS(NTAPI* BCryptRemoveContextFunctionPtr)(ULONG, LPCWSTR, ULONG, LPCWSTR);
 typedef NTSTATUS(NTAPI* BCryptAddContextFunctionProviderPtr)(ULONG, LPCWSTR, ULONG, LPCWSTR, LPCWSTR, ULONG);
 typedef NTSTATUS(NTAPI* BCryptRemoveContextFunctionProviderPtr)(ULONG, LPCWSTR, ULONG, LPCWSTR, LPCWSTR);
 
@@ -17,6 +16,8 @@ struct BCryptApi {
     HMODULE module = nullptr;
     BCryptRegisterProviderPtr RegisterProvider = nullptr;
     BCryptUnregisterProviderPtr UnregisterProvider = nullptr;
+    BCryptAddContextFunctionPtr AddContextFunction = nullptr;
+    BCryptRemoveContextFunctionPtr RemoveContextFunction = nullptr;
     BCryptAddContextFunctionProviderPtr AddContextFunctionProvider = nullptr;
     BCryptRemoveContextFunctionProviderPtr RemoveContextFunctionProvider = nullptr;
 
@@ -36,15 +37,20 @@ struct BCryptApi {
 
         RegisterProvider = reinterpret_cast<BCryptRegisterProviderPtr>(GetProcAddress(module, "BCryptRegisterProvider"));
         UnregisterProvider = reinterpret_cast<BCryptUnregisterProviderPtr>(GetProcAddress(module, "BCryptUnregisterProvider"));
+        AddContextFunction = reinterpret_cast<BCryptAddContextFunctionPtr>(GetProcAddress(module, "BCryptAddContextFunction"));
+        RemoveContextFunction = reinterpret_cast<BCryptRemoveContextFunctionPtr>(GetProcAddress(module, "BCryptRemoveContextFunction"));
         AddContextFunctionProvider = reinterpret_cast<BCryptAddContextFunctionProviderPtr>(GetProcAddress(module, "BCryptAddContextFunctionProvider"));
         RemoveContextFunctionProvider = reinterpret_cast<BCryptRemoveContextFunctionProviderPtr>(GetProcAddress(module, "BCryptRemoveContextFunctionProvider"));
 
-        return RegisterProvider && UnregisterProvider && AddContextFunctionProvider && RemoveContextFunctionProvider;
+        return RegisterProvider && UnregisterProvider && AddContextFunction && RemoveContextFunction && AddContextFunctionProvider && RemoveContextFunctionProvider;
     }
 };
 
 static constexpr const wchar_t* kProviderName = L"Remote A3 Key Storage Provider";
 static constexpr const wchar_t* kDllName = L"RemoteA3Ksp.dll";
+static constexpr NTSTATUS kStatusSuccess = 0;
+static constexpr NTSTATUS kStatusObjectNameCollision = static_cast<NTSTATUS>(0xC0000035L);
+static constexpr NTSTATUS kStatusNotFound = static_cast<NTSTATUS>(0xC0000225L);
 
 static std::wstring GetExecutableDirectory()
 {
@@ -78,6 +84,27 @@ static void PrintStatus(const wchar_t* operation, NTSTATUS status)
     std::wcout << operation << L": 0x" << std::hex << status << std::dec << std::endl;
 }
 
+static bool IsSuccessOrAlreadyExists(NTSTATUS status)
+{
+    return status == kStatusSuccess || status == kStatusObjectNameCollision;
+}
+
+static bool IsSuccessOrNotFound(NTSTATUS status)
+{
+    return status == kStatusSuccess || status == kStatusNotFound;
+}
+
+static void RemoveFunctionProviderIfPresent(BCryptApi& api, LPCWSTR functionName)
+{
+    NTSTATUS status = api.RemoveContextFunctionProvider(
+        CRYPT_LOCAL,
+        nullptr,
+        NCRYPT_KEY_STORAGE_INTERFACE,
+        functionName,
+        kProviderName);
+    PrintStatus(functionName, status);
+}
+
 static int RegisterProvider(const std::wstring& dllPath)
 {
     BCryptApi api;
@@ -87,13 +114,12 @@ static int RegisterProvider(const std::wstring& dllPath)
     }
 
     PWSTR functions[] = {
-        const_cast<PWSTR>(BCRYPT_RSA_ALGORITHM),
-        const_cast<PWSTR>(BCRYPT_RSA_SIGN_ALGORITHM),
+        const_cast<PWSTR>(NCRYPT_KEY_STORAGE_ALGORITHM),
     };
 
     CRYPT_INTERFACE_REG interfaceReg{};
-    interfaceReg.dwInterface = NCRYPT_INTERFACE;
-    interfaceReg.dwFlags = 0;
+    interfaceReg.dwInterface = NCRYPT_KEY_STORAGE_INTERFACE;
+    interfaceReg.dwFlags = CRYPT_LOCAL;
     interfaceReg.cFunctions = ARRAYSIZE(functions);
     interfaceReg.rgpszFunctions = functions;
 
@@ -110,9 +136,24 @@ static int RegisterProvider(const std::wstring& dllPath)
     providerReg.pUM = &userModeImage;
     providerReg.pKM = nullptr;
 
-    NTSTATUS status = api.RegisterProvider(kProviderName, 0, &providerReg);
+    RemoveFunctionProviderIfPresent(api, NCRYPT_KEY_STORAGE_ALGORITHM);
+    RemoveFunctionProviderIfPresent(api, BCRYPT_RSA_ALGORITHM);
+    RemoveFunctionProviderIfPresent(api, BCRYPT_RSA_SIGN_ALGORITHM);
+
+    NTSTATUS status = api.RegisterProvider(kProviderName, CRYPT_OVERWRITE, &providerReg);
     PrintStatus(L"BCryptRegisterProvider", status);
-    if (status != 0 && status != static_cast<NTSTATUS>(0xC0000035L)) {
+    if (status != kStatusSuccess) {
+        return 1;
+    }
+
+    status = api.AddContextFunction(
+        CRYPT_LOCAL,
+        nullptr,
+        NCRYPT_KEY_STORAGE_INTERFACE,
+        NCRYPT_KEY_STORAGE_ALGORITHM,
+        CRYPT_PRIORITY_BOTTOM);
+    PrintStatus(L"BCryptAddContextFunction KEY_STORAGE", status);
+    if (!IsSuccessOrAlreadyExists(status)) {
         return 1;
     }
 
@@ -120,12 +161,12 @@ static int RegisterProvider(const std::wstring& dllPath)
         status = api.AddContextFunctionProvider(
             CRYPT_LOCAL,
             nullptr,
-            NCRYPT_INTERFACE,
+            NCRYPT_KEY_STORAGE_INTERFACE,
             functionName,
             kProviderName,
-            CRYPT_PRIORITY_TOP);
+            CRYPT_PRIORITY_BOTTOM);
         PrintStatus(functionName, status);
-        if (status != 0 && status != static_cast<NTSTATUS>(0xC0000035L)) {
+        if (!IsSuccessOrAlreadyExists(status)) {
             return 1;
         }
     }
@@ -142,6 +183,7 @@ static int UnregisterProvider()
     }
 
     PWSTR functions[] = {
+        const_cast<PWSTR>(NCRYPT_KEY_STORAGE_ALGORITHM),
         const_cast<PWSTR>(BCRYPT_RSA_ALGORITHM),
         const_cast<PWSTR>(BCRYPT_RSA_SIGN_ALGORITHM),
     };
@@ -150,15 +192,22 @@ static int UnregisterProvider()
         NTSTATUS status = api.RemoveContextFunctionProvider(
             CRYPT_LOCAL,
             nullptr,
-            NCRYPT_INTERFACE,
+            NCRYPT_KEY_STORAGE_INTERFACE,
             functionName,
             kProviderName);
         PrintStatus(functionName, status);
     }
 
+    NTSTATUS removeFunctionStatus = api.RemoveContextFunction(
+        CRYPT_LOCAL,
+        nullptr,
+        NCRYPT_KEY_STORAGE_INTERFACE,
+        NCRYPT_KEY_STORAGE_ALGORITHM);
+    PrintStatus(L"BCryptRemoveContextFunction KEY_STORAGE", removeFunctionStatus);
+
     NTSTATUS status = api.UnregisterProvider(kProviderName);
     PrintStatus(L"BCryptUnregisterProvider", status);
-    return status == 0 ? 0 : 1;
+    return IsSuccessOrNotFound(status) ? 0 : 1;
 }
 
 int wmain(int argc, wchar_t** argv)
