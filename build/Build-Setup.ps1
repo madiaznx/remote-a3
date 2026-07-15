@@ -35,7 +35,7 @@ Remove-Item -LiteralPath $outDir -Recurse -Force -ErrorAction SilentlyContinue
 Remove-Item -LiteralPath $stagingDir -Recurse -Force -ErrorAction SilentlyContinue
 New-Item -ItemType Directory -Path $outDir, $payloadDir, $setupStageDir, $outputDirResolved -Force | Out-Null
 
-$payloadItems = @("README.md", "VERSION", "docs", "scripts", "config", "native")
+$payloadItems = @("README.md", "VERSION", "docs", "scripts", "config", "native", ".github")
 foreach ($item in $payloadItems) {
     $source = Join-Path $repoRoot $item
     $destination = Join-Path $payloadDir $item
