@@ -180,6 +180,8 @@ Nota: a partir da `0.4.8`, o fluxo passa a ser plug-and-play e inclui a interfac
 
 Nota: a partir da `0.4.9`, o setup plug-and-play registra a importacao automatica mesmo quando uma etapa anterior falha, por exemplo DLL do KSP em uso ate reiniciar o Windows.
 
+Nota: a partir da `0.5.0`, a interface mostra certificados encontrados por anuncio/exportacao e usa um botao **Importar** por certificado. A importacao tenta credenciais atuais primeiro e pede credencial do Windows se o agente remoto responder `401`.
+
 Fluxo no PC atual:
 
 1. Instalar o setup que inclui os binarios nativos `RemoteA3Ksp.dll` e `RemoteA3KspAdmin.exe`.
