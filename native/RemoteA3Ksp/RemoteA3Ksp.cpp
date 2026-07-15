@@ -73,6 +73,7 @@ typedef struct _NCRYPT_KEY_STORAGE_FUNCTION_TABLE {
 #endif
 
 #include <algorithm>
+#include <ctime>
 #include <fstream>
 #include <map>
 #include <memory>
@@ -268,6 +269,55 @@ static std::wstring GetLocalAppDataPath()
     return buffer;
 }
 
+static void EnsureDirectory(const std::wstring& path)
+{
+    if (path.empty()) {
+        return;
+    }
+    CreateDirectoryW(path.c_str(), nullptr);
+}
+
+static std::wstring LogPath()
+{
+    std::wstring base = GetLocalAppDataPath();
+    if (base.empty()) {
+        return L"";
+    }
+
+    std::wstring appDir = base + L"\\RemoteA3";
+    std::wstring logDir = appDir + L"\\logs";
+    EnsureDirectory(appDir);
+    EnsureDirectory(logDir);
+    return logDir + L"\\ksp.log";
+}
+
+static void LogLine(const std::wstring& message)
+{
+    std::wstring path = LogPath();
+    if (path.empty()) {
+        return;
+    }
+
+    SYSTEMTIME now{};
+    GetLocalTime(&now);
+    wchar_t timestamp[64]{};
+    swprintf_s(
+        timestamp,
+        L"%04u-%02u-%02u %02u:%02u:%02u.%03u",
+        now.wYear,
+        now.wMonth,
+        now.wDay,
+        now.wHour,
+        now.wMinute,
+        now.wSecond,
+        now.wMilliseconds);
+
+    std::wofstream file(path, std::ios::app);
+    if (file.good()) {
+        file << timestamp << L" " << message << std::endl;
+    }
+}
+
 static std::wstring KeyConfigPath(const std::wstring& containerName)
 {
     std::wstring base = GetLocalAppDataPath();
@@ -280,11 +330,13 @@ static std::wstring KeyConfigPath(const std::wstring& containerName)
 static bool ReadStoredCredential(const std::wstring& targetName, std::wstring& username, std::wstring& password)
 {
     if (targetName.empty()) {
+        LogLine(L"Credential target empty.");
         return false;
     }
 
     PCREDENTIALW credential = nullptr;
     if (!CredReadW(targetName.c_str(), CRED_TYPE_GENERIC, 0, &credential)) {
+        LogLine(L"CredRead failed for target " + targetName + L" error=" + std::to_wstring(GetLastError()));
         return false;
     }
 
@@ -302,6 +354,7 @@ static bool ReadStoredCredential(const std::wstring& targetName, std::wstring& u
     }
 
     CredFree(credential);
+    LogLine(L"Credential loaded for target " + targetName + L" user=" + username + L" hasPassword=" + (password.empty() ? L"false" : L"true"));
     return !username.empty();
 }
 
@@ -335,7 +388,12 @@ static bool LoadKeyConfig(const std::wstring& containerName, KeyContext& key)
         else if (_wcsicmp(name.c_str(), L"credentialTarget") == 0) key.credentialTarget = value;
     }
 
-    ReadStoredCredential(key.credentialTarget, key.networkUser, key.networkPassword);
+    bool credentialLoaded = ReadStoredCredential(key.credentialTarget, key.networkUser, key.networkPassword);
+    LogLine(
+        L"LoadKeyConfig container=" + containerName +
+        L" agentUrl=" + key.agentUrl +
+        L" credentialTarget=" + key.credentialTarget +
+        L" credentialLoaded=" + (credentialLoaded ? L"true" : L"false"));
 
     return !key.agentUrl.empty() && !key.thumbprint.empty();
 }
@@ -505,15 +563,20 @@ static HRESULT HttpPostJson(
     parts.dwUrlPathLength = ARRAYSIZE(path);
 
     if (!WinHttpCrackUrl(url.c_str(), 0, 0, &parts)) {
+        LogLine(L"WinHttpCrackUrl failed error=" + std::to_wstring(GetLastError()));
         return HRESULT_FROM_WIN32(GetLastError());
     }
 
     HINTERNET session = WinHttpOpen(L"RemoteA3Ksp/0.3", WINHTTP_ACCESS_TYPE_DEFAULT_PROXY, WINHTTP_NO_PROXY_NAME, WINHTTP_NO_PROXY_BYPASS, 0);
-    if (!session) return HRESULT_FROM_WIN32(GetLastError());
+    if (!session) {
+        LogLine(L"WinHttpOpen failed error=" + std::to_wstring(GetLastError()));
+        return HRESULT_FROM_WIN32(GetLastError());
+    }
 
     HINTERNET connect = WinHttpConnect(session, std::wstring(host, parts.dwHostNameLength).c_str(), parts.nPort, 0);
     if (!connect) {
         DWORD error = GetLastError();
+        LogLine(L"WinHttpConnect failed error=" + std::to_wstring(error));
         WinHttpCloseHandle(session);
         return HRESULT_FROM_WIN32(error);
     }
@@ -521,16 +584,38 @@ static HRESULT HttpPostJson(
     DWORD requestFlags = parts.nScheme == INTERNET_SCHEME_HTTPS ? WINHTTP_FLAG_SECURE : 0;
     std::wstring requestPath(path, parts.dwUrlPathLength);
 
-    auto postOnce = [&](bool useStoredCredential, DWORD authScheme, DWORD& statusCode, std::string& bodyResponse) -> HRESULT {
+    auto authSchemeName = [](DWORD scheme) -> std::wstring {
+        switch (scheme) {
+        case WINHTTP_AUTH_SCHEME_NEGOTIATE: return L"Negotiate";
+        case WINHTTP_AUTH_SCHEME_NTLM: return L"NTLM";
+        case WINHTTP_AUTH_SCHEME_BASIC: return L"Basic";
+        case WINHTTP_AUTH_SCHEME_PASSPORT: return L"Passport";
+        case WINHTTP_AUTH_SCHEME_DIGEST: return L"Digest";
+        default: return L"0x" + std::to_wstring(scheme);
+        }
+    };
+
+    auto chooseAuthScheme = [](DWORD supportedSchemes) -> DWORD {
+        if (supportedSchemes & WINHTTP_AUTH_SCHEME_NEGOTIATE) return WINHTTP_AUTH_SCHEME_NEGOTIATE;
+        if (supportedSchemes & WINHTTP_AUTH_SCHEME_NTLM) return WINHTTP_AUTH_SCHEME_NTLM;
+        if (supportedSchemes & WINHTTP_AUTH_SCHEME_BASIC) return WINHTTP_AUTH_SCHEME_BASIC;
+        if (supportedSchemes & WINHTTP_AUTH_SCHEME_DIGEST) return WINHTTP_AUTH_SCHEME_DIGEST;
+        return 0;
+    };
+
+    auto postOnce = [&](bool useStoredCredential, DWORD authScheme, DWORD& statusCode, DWORD& supportedSchemes, std::string& bodyResponse) -> HRESULT {
         HINTERNET request = WinHttpOpenRequest(connect, L"POST", requestPath.c_str(), nullptr, WINHTTP_NO_REFERER, WINHTTP_DEFAULT_ACCEPT_TYPES, requestFlags);
         if (!request) {
-            return HRESULT_FROM_WIN32(GetLastError());
+            DWORD error = GetLastError();
+            LogLine(L"WinHttpOpenRequest failed error=" + std::to_wstring(error));
+            return HRESULT_FROM_WIN32(error);
         }
 
         DWORD autoLogon = WINHTTP_AUTOLOGON_SECURITY_LEVEL_LOW;
         WinHttpSetOption(request, WINHTTP_OPTION_AUTOLOGON_POLICY, &autoLogon, sizeof(autoLogon));
 
         if (useStoredCredential) {
+            LogLine(L"WinHttpSetCredentials user=" + networkUser + L" scheme=" + authSchemeName(authScheme));
             if (!WinHttpSetCredentials(
                     request,
                     WINHTTP_AUTH_TARGET_SERVER,
@@ -539,6 +624,7 @@ static HRESULT HttpPostJson(
                     networkPassword.c_str(),
                     nullptr)) {
                 DWORD error = GetLastError();
+                LogLine(L"WinHttpSetCredentials failed error=" + std::to_wstring(error));
                 WinHttpCloseHandle(request);
                 return HRESULT_FROM_WIN32(error);
             }
@@ -561,6 +647,7 @@ static HRESULT HttpPostJson(
 
         if (!ok) {
             DWORD error = GetLastError();
+            LogLine(L"WinHttpSend/Receive failed error=" + std::to_wstring(error) + L" useStoredCredential=" + (useStoredCredential ? L"true" : L"false"));
             WinHttpCloseHandle(request);
             return HRESULT_FROM_WIN32(error);
         }
@@ -568,6 +655,14 @@ static HRESULT HttpPostJson(
         statusCode = 0;
         DWORD statusSize = sizeof(statusCode);
         WinHttpQueryHeaders(request, WINHTTP_QUERY_STATUS_CODE | WINHTTP_QUERY_FLAG_NUMBER, nullptr, &statusCode, &statusSize, nullptr);
+        LogLine(L"HTTP status=" + std::to_wstring(statusCode) + L" useStoredCredential=" + (useStoredCredential ? L"true" : L"false"));
+
+        supportedSchemes = 0;
+        DWORD firstScheme = 0;
+        DWORD authTarget = 0;
+        if (statusCode == HTTP_STATUS_DENIED && WinHttpQueryAuthSchemes(request, &supportedSchemes, &firstScheme, &authTarget)) {
+            LogLine(L"HTTP auth challenge schemes=" + std::to_wstring(supportedSchemes) + L" first=" + authSchemeName(firstScheme));
+        }
 
         bodyResponse.clear();
         if (statusCode >= 200 && statusCode <= 299) {
@@ -588,7 +683,8 @@ static HRESULT HttpPostJson(
     };
 
     DWORD statusCode = 0;
-    HRESULT hr = postOnce(false, 0, statusCode, response);
+    DWORD supportedSchemes = 0;
+    HRESULT hr = postOnce(false, 0, statusCode, supportedSchemes, response);
     if (FAILED(hr)) {
         WinHttpCloseHandle(connect);
         WinHttpCloseHandle(session);
@@ -596,14 +692,20 @@ static HRESULT HttpPostJson(
     }
 
     if (statusCode == HTTP_STATUS_DENIED && !networkUser.empty()) {
-        DWORD schemes[] = {
-            WINHTTP_AUTH_SCHEME_NEGOTIATE,
-            WINHTTP_AUTH_SCHEME_NTLM,
-            WINHTTP_AUTH_SCHEME_BASIC,
-        };
+        DWORD chosenScheme = chooseAuthScheme(supportedSchemes);
+        DWORD schemes[4]{};
+        DWORD schemeCount = 0;
+        if (chosenScheme) {
+            schemes[schemeCount++] = chosenScheme;
+        }
+        if (chosenScheme != WINHTTP_AUTH_SCHEME_NEGOTIATE) schemes[schemeCount++] = WINHTTP_AUTH_SCHEME_NEGOTIATE;
+        if (chosenScheme != WINHTTP_AUTH_SCHEME_NTLM) schemes[schemeCount++] = WINHTTP_AUTH_SCHEME_NTLM;
+        if (chosenScheme != WINHTTP_AUTH_SCHEME_BASIC) schemes[schemeCount++] = WINHTTP_AUTH_SCHEME_BASIC;
 
-        for (DWORD scheme : schemes) {
-            hr = postOnce(true, scheme, statusCode, response);
+        for (DWORD i = 0; i < schemeCount; ++i) {
+            DWORD scheme = schemes[i];
+            DWORD ignoredSchemes = 0;
+            hr = postOnce(true, scheme, statusCode, ignoredSchemes, response);
             if (FAILED(hr)) {
                 WinHttpCloseHandle(connect);
                 WinHttpCloseHandle(session);
@@ -624,9 +726,17 @@ static HRESULT HttpPostJson(
     WinHttpCloseHandle(session);
 
     if (statusCode < 200 || statusCode > 299) {
+        LogLine(L"HTTP final non-success status=" + std::to_wstring(statusCode));
+        if (statusCode == HTTP_STATUS_DENIED) {
+            return HRESULT_FROM_WIN32(ERROR_LOGON_FAILURE);
+        }
+        if (statusCode == HTTP_STATUS_FORBIDDEN) {
+            return HRESULT_FROM_WIN32(ERROR_ACCESS_DENIED);
+        }
         return HRESULT_FROM_WIN32(ERROR_ACCESS_DENIED);
     }
 
+    LogLine(L"HTTP sign request succeeded.");
     return S_OK;
 }
 
