@@ -38,6 +38,9 @@ powershell.exe -NoProfile -ExecutionPolicy Bypass -File "%~dp0..\scripts\Registe
     "remote-a3-auto-register-admin.cmd" = '@echo off
 powershell.exe -NoProfile -ExecutionPolicy Bypass -File "%~dp0..\scripts\Invoke-RemoteA3AutoRegisterAdmin.ps1"
 '
+    "remote-a3-token-host-ntlm.cmd" = '@echo off
+powershell.exe -NoProfile -ExecutionPolicy Bypass -File "%~dp0..\scripts\Repair-RemoteA3TokenHost.ps1" %*
+'
     "remote-a3-find-port.cmd" = '@echo off
 powershell.exe -NoProfile -ExecutionPolicy Bypass -File "%~dp0..\scripts\Find-RemoteA3Port.ps1" %*
 '
@@ -128,6 +131,10 @@ New-RemoteA3Shortcut `
 New-RemoteA3Shortcut `
     -Name "Remote A3 Auto Register Admin.lnk" `
     -Arguments "-NoExit -NoProfile -ExecutionPolicy Bypass -File `"$InstallDir\scripts\Invoke-RemoteA3AutoRegisterAdmin.ps1`""
+
+New-RemoteA3Shortcut `
+    -Name "Remote A3 Token Host NTLM Admin.lnk" `
+    -Arguments "-NoExit -NoProfile -ExecutionPolicy Bypass -File `"$InstallDir\scripts\Repair-RemoteA3TokenHost.ps1`""
 
 New-RemoteA3Shortcut `
     -Name "Remote A3 Receive Advertisements.lnk" `
