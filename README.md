@@ -148,6 +148,8 @@ Nota: a partir da `0.4.3`, o KSP mantem o mesmo corpo JSON durante o handshake a
 
 Nota: a partir da `0.4.4`, o setup inclui `remote-a3-token-host-ntlm.cmd` para reconfigurar rapidamente o computador com token em `Ntlm`, reiniciando a tarefa agendada e testando o `/health` local.
 
+Nota: a partir da `0.4.5`, esse mesmo reparo tambem encerra automaticamente um processo antigo do Remote A3 que ainda esteja segurando a porta do agente.
+
 Fluxo no PC atual:
 
 1. Instalar o setup que inclui os binarios nativos `RemoteA3Ksp.dll` e `RemoteA3KspAdmin.exe`.
