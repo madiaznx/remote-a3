@@ -15,7 +15,9 @@ param(
 
     [string]$RemoteStoreName = "My",
 
-    [string]$ProviderName = "Remote A3 Key Storage Provider"
+    [string]$ProviderName = "Remote A3 Key Storage Provider",
+
+    [System.Management.Automation.PSCredential]$Credential
 )
 
 Set-StrictMode -Version 2.0
@@ -27,7 +29,18 @@ if (-not $AgentUrl.EndsWith("/")) {
 }
 
 $cleanThumbprint = ($Thumbprint -replace "\s", "").ToUpperInvariant()
-$certificateResponse = Invoke-RestMethod -Uri ([Uri]::new([Uri]$AgentUrl, "certificates")) -UseDefaultCredentials
+$requestParams = @{
+    Uri = [Uri]::new([Uri]$AgentUrl, "certificates")
+}
+
+if ($null -ne $Credential) {
+    $requestParams.Credential = $Credential
+}
+else {
+    $requestParams.UseDefaultCredentials = $true
+}
+
+$certificateResponse = Invoke-RestMethod @requestParams
 $remoteCertificate = @($certificateResponse.certificates | Where-Object {
     (($_.Thumbprint -replace "\s", "").ToUpperInvariant()) -eq $cleanThumbprint
 }) | Select-Object -First 1
@@ -148,4 +161,3 @@ finally {
     KeyConfigPath  = $keyConfigPath
     TestCommand    = "certutil -user -store My $cleanThumbprint"
 }
-
