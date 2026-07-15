@@ -136,6 +136,8 @@ Nota: a partir da `0.4.1`, o KSP grava diagnostico em `%LOCALAPPDATA%\RemoteA3\l
 
 Nota: a partir da `0.4.2`, o KSP faz o handshake WinHTTP autenticado antes de reenviar o JSON de assinatura e tambem tenta `HOST\usuario` quando a credencial foi salva sem dominio.
 
+Nota: a partir da `0.4.3`, o KSP mantem o mesmo corpo JSON durante o handshake autenticado do WinHTTP, evitando `ERROR_INVALID_PARAMETER` (`87`) ao reenviar `/sign`.
+
 Fluxo no PC atual:
 
 1. Instalar o setup que inclui os binarios nativos `RemoteA3Ksp.dll` e `RemoteA3KspAdmin.exe`.
