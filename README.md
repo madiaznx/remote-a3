@@ -30,6 +30,7 @@ Esse registro automatico:
 - cria a tarefa agendada `RemoteA3 Agent`;
 - inicia o agente agora quando usado com `-StartNow`;
 - anuncia o agente por UDP na porta `28764`.
+- inicia a tarefa com PowerShell oculto, sem janela que precise ficar aberta.
 
 Com linha de comando:
 
@@ -61,6 +62,14 @@ Se o agente nao responder em `/health`, inicie manualmente para ver o erro:
 
 ```powershell
 & "$env:LOCALAPPDATA\RemoteA3\bin\remote-a3-auto-agent.cmd"
+```
+
+Para iniciar, parar e ver status da tarefa:
+
+```powershell
+Start-ScheduledTask -TaskName "RemoteA3 Agent"
+& "$env:LOCALAPPDATA\RemoteA3\bin\remote-a3-status.cmd"
+& "$env:LOCALAPPDATA\RemoteA3\bin\remote-a3-stop.cmd"
 ```
 
 Observacao: a tarefa padrao inicia no logon do usuario atual, porque certificados A3 muitas vezes ficam no repositorio `CurrentUser`. Se o certificado estiver no repositorio da maquina e o provedor do token funcionar em servico, use `-Trigger AtStartup`.
