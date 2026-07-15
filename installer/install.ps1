@@ -47,6 +47,12 @@ powershell.exe -NoProfile -ExecutionPolicy Bypass -File "%~dp0..\scripts\Receive
     "remote-a3-sign.cmd" = '@echo off
 powershell.exe -NoProfile -ExecutionPolicy Bypass -File "%~dp0..\scripts\Invoke-RemoteA3Sign.ps1" %*
 '
+    "remote-a3-status.cmd" = '@echo off
+powershell.exe -NoProfile -ExecutionPolicy Bypass -File "%~dp0..\scripts\Get-RemoteA3AgentStatus.ps1" %*
+'
+    "remote-a3-stop.cmd" = '@echo off
+powershell.exe -NoProfile -ExecutionPolicy Bypass -File "%~dp0..\scripts\Stop-RemoteA3Agent.ps1" %*
+'
 }
 
 foreach ($entry in $launchers.GetEnumerator()) {
@@ -110,6 +116,14 @@ New-RemoteA3Shortcut `
 New-RemoteA3Shortcut `
     -Name "Remote A3 Receive Advertisements.lnk" `
     -Arguments "-NoExit -NoProfile -ExecutionPolicy Bypass -File `"$InstallDir\scripts\Receive-RemoteA3Advertisements.ps1`" -Seconds 30"
+
+New-RemoteA3Shortcut `
+    -Name "Remote A3 Status.lnk" `
+    -Arguments "-NoExit -NoProfile -ExecutionPolicy Bypass -File `"$InstallDir\scripts\Get-RemoteA3AgentStatus.ps1`""
+
+New-RemoteA3Shortcut `
+    -Name "Remote A3 Stop Agent.lnk" `
+    -Arguments "-NoExit -NoProfile -ExecutionPolicy Bypass -File `"$InstallDir\scripts\Stop-RemoteA3Agent.ps1`""
 
 New-RemoteA3Shortcut `
     -Name "Remote A3 Uninstall.lnk" `
