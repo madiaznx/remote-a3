@@ -15,6 +15,14 @@ function Test-IsAdministrator {
     return $principal.IsInRole([Security.Principal.WindowsBuiltInRole]::Administrator)
 }
 
+function Get-System32Directory {
+    if ([Environment]::Is64BitOperatingSystem -and -not [Environment]::Is64BitProcess) {
+        return Join-Path $env:WINDIR "Sysnative"
+    }
+
+    return Join-Path $env:WINDIR "System32"
+}
+
 if (-not (Test-IsAdministrator)) {
     throw "Execute como administrador. O registro de KSP e instalado em HKLM."
 }
@@ -45,7 +53,8 @@ if (-not (Test-Path -LiteralPath $dllPath) -or -not (Test-Path -LiteralPath $adm
 
 New-Item -ItemType Directory -Path $InstallDirectory -Force | Out-Null
 
-$installedDll = Join-Path $InstallDirectory "RemoteA3Ksp.dll"
+$system32 = Get-System32Directory
+$installedDll = Join-Path $system32 "RemoteA3Ksp.dll"
 $installedAdmin = Join-Path $InstallDirectory "RemoteA3KspAdmin.exe"
 
 if ($PSCmdlet.ShouldProcess($InstallDirectory, "Copiar binarios nativos")) {
@@ -60,8 +69,14 @@ if ($Unregister) {
 }
 else {
     if ($PSCmdlet.ShouldProcess("Remote A3 Key Storage Provider", "Registrar KSP CNG")) {
-        & $installedAdmin register $installedDll
+        & $installedAdmin register "RemoteA3Ksp.dll"
     }
+}
+
+$testScript = Join-Path (Split-Path -Parent $MyInvocation.MyCommand.Path) "Test-RemoteA3Ksp.ps1"
+$verification = $null
+if (-not $Unregister -and (Test-Path -LiteralPath $testScript)) {
+    $verification = & $testScript
 }
 
 [pscustomobject]@{
@@ -70,5 +85,7 @@ else {
     ProviderName   = "Remote A3 Key Storage Provider"
     DllPath        = $installedDll
     AdminPath      = $installedAdmin
+    ProviderOpenOk = if ($null -ne $verification) { $verification.ProviderOpenOk } else { $null }
+    ProviderStatus = if ($null -ne $verification) { $verification.ProviderStatusHex } else { $null }
     VerifyCommand  = "certutil -csplist"
 }
