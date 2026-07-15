@@ -124,6 +124,8 @@ A partir da `0.3.0`, o projeto inclui a primeira versao do **Remote A3 Key Stora
 
 Nota: a partir da `0.3.6`, o registro do KSP publica corretamente a funcao CNG `KEY_STORAGE`, instala a DLL em `System32` e inclui um teste direto do provider local. Se o `certutil` mostrar `Conjunto de chaves armazenadas ausente` em um certificado Remote A3 importado com versao anterior, reinstale a versao nova, execute novamente o **Remote A3 Install KSP Admin** e importe o certificado virtual de novo.
 
+Nota: a partir da `0.3.7`, o prompt local de PIN usa flags compativeis com `CredUIPromptForCredentials`. Isso corrige o erro `Sinalizadores invalidos` ao chamar `SignData`.
+
 Fluxo no PC atual:
 
 1. Instalar o setup que inclui os binarios nativos `RemoteA3Ksp.dll` e `RemoteA3KspAdmin.exe`.
