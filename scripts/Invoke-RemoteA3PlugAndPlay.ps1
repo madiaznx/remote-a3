@@ -45,6 +45,37 @@ function ConvertTo-ProcessArgument {
     return '"' + ($Value -replace '"', '\"') + '"'
 }
 
+function Invoke-RemoteA3SetupStep {
+    param(
+        [Parameter(Mandatory = $true)]
+        [string]$Name,
+
+        [Parameter(Mandatory = $true)]
+        [scriptblock]$ScriptBlock
+    )
+
+    Write-Host "Step start: $Name"
+    try {
+        $output = & $ScriptBlock
+        Write-Host "Step ok: $Name"
+        return [pscustomobject]@{
+            ok     = $true
+            name   = $Name
+            output = $output
+            error  = $null
+        }
+    }
+    catch {
+        Write-Host "Step failed: $Name - $($_.Exception.Message)"
+        return [pscustomobject]@{
+            ok     = $false
+            name   = $Name
+            output = $null
+            error  = $_.Exception.Message
+        }
+    }
+}
+
 $scriptPath = Get-CurrentScriptPath
 $scriptDir = Split-Path -Parent $scriptPath
 $installRoot = Split-Path -Parent $scriptDir
@@ -101,22 +132,28 @@ try {
 
     if (-not $SkipKsp) {
         $installKspPath = Join-Path $scriptDir "Install-RemoteA3Ksp.ps1"
-        Write-Host "Installing KSP..."
-        $results.ksp = & $installKspPath
+        $results.ksp = Invoke-RemoteA3SetupStep -Name "KSP" -ScriptBlock {
+            & $installKspPath
+        }
     }
 
     if (-not $SkipAgent) {
         $repairHostPath = Join-Path $scriptDir "Repair-RemoteA3TokenHost.ps1"
-        Write-Host "Configuring local certificate host..."
-        $results.agent = & $repairHostPath -Port $Port -Authentication $Authentication -NoElevate
+        $results.agent = Invoke-RemoteA3SetupStep -Name "Agent" -ScriptBlock {
+            & $repairHostPath -Port $Port -Authentication $Authentication -NoElevate
+        }
     }
 
     if (-not $SkipAutoImport) {
         $registerImportPath = Join-Path $scriptDir "Register-RemoteA3AutoImport.ps1"
-        Write-Host "Configuring automatic certificate import..."
-        $results.autoImport = & $registerImportPath -StartNow
+        $results.autoImport = Invoke-RemoteA3SetupStep -Name "AutoImport" -ScriptBlock {
+            & $registerImportPath -StartNow
+        }
     }
 
+    $steps = @($results.ksp, $results.agent, $results.autoImport)
+    $failedSteps = @($steps | Where-Object { $null -ne $_ -and -not $_.ok })
+    $results.ok = ($failedSteps.Count -eq 0)
     $results.completedUtc = (Get-Date).ToUniversalTime().ToString("o")
     $results | ConvertTo-Json -Depth 8 | Set-Content -LiteralPath $resultPath -Encoding ASCII
     Write-Host ($results | ConvertTo-Json -Depth 8)
