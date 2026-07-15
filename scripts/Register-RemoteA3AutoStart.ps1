@@ -33,6 +33,18 @@ param(
 
 Set-StrictMode -Version 2.0
 
+function Get-CurrentScriptPath {
+    if (-not [string]::IsNullOrWhiteSpace($PSCommandPath)) {
+        return $PSCommandPath
+    }
+
+    if ($null -ne $MyInvocation.MyCommand -and -not [string]::IsNullOrWhiteSpace($MyInvocation.MyCommand.Path)) {
+        return $MyInvocation.MyCommand.Path
+    }
+
+    return $MyInvocation.InvocationName
+}
+
 function Test-IsAdministrator {
     $identity = [Security.Principal.WindowsIdentity]::GetCurrent()
     $principal = New-Object Security.Principal.WindowsPrincipal($identity)
@@ -47,11 +59,13 @@ if ([string]::IsNullOrWhiteSpace($UrlAclUser)) {
     throw "Informe -UrlAclUser. Exemplo: DOMINIO\Usuario ou DOMINIO\Grupo."
 }
 
-$installRoot = Split-Path -Parent (Split-Path -Parent $MyInvocation.MyCommand.Path)
+$scriptPath = Get-CurrentScriptPath
+$scriptDir = Split-Path -Parent $scriptPath
+$installRoot = Split-Path -Parent $scriptDir
 $configDir = Join-Path $installRoot "config"
 $configPath = Join-Path $configDir "agent.settings.json"
-$findPortPath = Join-Path $PSScriptRoot "Find-RemoteA3Port.ps1"
-$autoAgentPath = Join-Path $PSScriptRoot "Start-RemoteA3AutoAgent.ps1"
+$findPortPath = Join-Path $scriptDir "Find-RemoteA3Port.ps1"
+$autoAgentPath = Join-Path $scriptDir "Start-RemoteA3AutoAgent.ps1"
 
 if (-not $Port) {
     $findArgs = @{
@@ -178,4 +192,3 @@ if ($StartNow) {
     AdvertisementPort = $AdvertisementPort
     ConfigPath        = $configPath
 }
-
