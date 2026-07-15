@@ -303,14 +303,18 @@ function Start-AgentAdvertiser {
         [int]$Port,
 
         [Parameter(Mandatory = $true)]
-        [int]$IntervalSeconds
+        [int]$IntervalSeconds,
+
+        [Parameter(Mandatory = $true)]
+        [string]$InventoryPath
     )
 
     $scriptBlock = {
         param(
             [string]$AdvertisedAgentUrl,
             [int]$UdpPort,
-            [int]$Interval
+            [int]$Interval,
+            [string]$CertificateInventoryPath
         )
 
         $udp = New-Object System.Net.Sockets.UdpClient
@@ -319,13 +323,26 @@ function Start-AgentAdvertiser {
 
         try {
             while ($true) {
+                $certificates = @()
+                try {
+                    if (Test-Path -LiteralPath $CertificateInventoryPath) {
+                        $certificates = @(& $CertificateInventoryPath -Scope Both -StoreName My -OnlyWithPrivateKey |
+                            Where-Object { -not $_.IsRemoteA3Virtual } |
+                            Select-Object MachineName, Scope, StoreName, Subject, Thumbprint, NotAfter, LikelyA3, HasPrivateKey, IsRemoteA3Virtual)
+                    }
+                }
+                catch {
+                    $certificates = @()
+                }
+
                 $payload = @{
                     protocol     = "remote-a3"
-                    version      = 1
+                    version      = 2
                     machineName  = $env:COMPUTERNAME
                     userName     = if ($env:USERDOMAIN) { "$($env:USERDOMAIN)\$($env:USERNAME)" } else { $env:USERNAME }
                     agentUrl     = $AdvertisedAgentUrl
                     port         = ([Uri]$AdvertisedAgentUrl).Port
+                    certificates = $certificates
                     timestampUtc = (Get-Date).ToUniversalTime().ToString("o")
                 } | ConvertTo-Json -Depth 4 -Compress
 
@@ -339,7 +356,7 @@ function Start-AgentAdvertiser {
         }
     }
 
-    Start-Job -ScriptBlock $scriptBlock -ArgumentList $AgentUrl, $Port, $IntervalSeconds
+    Start-Job -ScriptBlock $scriptBlock -ArgumentList $AgentUrl, $Port, $IntervalSeconds, $InventoryPath
 }
 
 if (-not $Prefix.EndsWith("/")) {
@@ -368,7 +385,8 @@ catch {
 
 Write-Host "Remote A3 Agent ouvindo em $Prefix com autenticacao $Authentication"
 if ($Advertise) {
-    $advertiserJob = Start-AgentAdvertiser -AgentUrl $advertisedAgentUrl -Port $AdvertisementPort -IntervalSeconds $AdvertisementIntervalSeconds
+    $inventoryPath = Join-Path -Path $PSScriptRoot -ChildPath "Get-A3CertificateInventory.ps1"
+    $advertiserJob = Start-AgentAdvertiser -AgentUrl $advertisedAgentUrl -Port $AdvertisementPort -IntervalSeconds $AdvertisementIntervalSeconds -InventoryPath $inventoryPath
     Write-Host "Anunciando $advertisedAgentUrl via UDP $AdvertisementPort a cada $AdvertisementIntervalSeconds segundos."
 }
 Write-Host "Pressione Ctrl+C para encerrar."
