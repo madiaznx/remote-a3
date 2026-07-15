@@ -57,6 +57,12 @@ No PC atual, para receber anuncios dos computadores com agente:
 "$env:LOCALAPPDATA\RemoteA3\bin\remote-a3-receive.cmd" -Seconds 30
 ```
 
+Se o agente nao responder em `/health`, inicie manualmente para ver o erro:
+
+```powershell
+& "$env:LOCALAPPDATA\RemoteA3\bin\remote-a3-auto-agent.cmd"
+```
+
 Observacao: a tarefa padrao inicia no logon do usuario atual, porque certificados A3 muitas vezes ficam no repositorio `CurrentUser`. Se o certificado estiver no repositorio da maquina e o provedor do token funcionar em servico, use `-Trigger AtStartup`.
 
 ```powershell
