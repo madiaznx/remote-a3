@@ -1,0 +1,4 @@
+LIBRARY "RemoteA3Ksp"
+EXPORTS
+    GetKeyStorageInterface
+
