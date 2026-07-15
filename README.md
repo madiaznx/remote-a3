@@ -122,7 +122,7 @@ Esse teste assina o hash de um arquivo. Ele ainda nao cria containers finais com
 
 A partir da `0.3.0`, o projeto inclui a primeira versao do **Remote A3 Key Storage Provider** para CNG. Ele e experimental e ainda precisa ser validado com os aplicativos reais.
 
-Nota: a partir da `0.3.5`, o registro do KSP publica corretamente a funcao CNG `KEY_STORAGE`. Se o `certutil` mostrar `Conjunto de chaves armazenadas ausente` em um certificado Remote A3 importado com versao anterior, reinstale a versao nova, execute novamente o **Remote A3 Install KSP Admin** e importe o certificado virtual de novo.
+Nota: a partir da `0.3.6`, o registro do KSP publica corretamente a funcao CNG `KEY_STORAGE`, instala a DLL em `System32` e inclui um teste direto do provider local. Se o `certutil` mostrar `Conjunto de chaves armazenadas ausente` em um certificado Remote A3 importado com versao anterior, reinstale a versao nova, execute novamente o **Remote A3 Install KSP Admin** e importe o certificado virtual de novo.
 
 Fluxo no PC atual:
 
@@ -133,7 +133,13 @@ Fluxo no PC atual:
 & "$env:LOCALAPPDATA\RemoteA3\bin\remote-a3-install-ksp.cmd"
 ```
 
-3. Importar um certificado remoto virtual apontando para o agente:
+3. Validar se o Windows consegue abrir o KSP local:
+
+```powershell
+& "$env:LOCALAPPDATA\RemoteA3\bin\remote-a3-test-ksp.cmd"
+```
+
+4. Importar um certificado remoto virtual apontando para o agente:
 
 ```powershell
 & "$env:LOCALAPPDATA\RemoteA3\bin\remote-a3-install-virtual-cert.cmd" `
@@ -151,7 +157,7 @@ $cred = Get-Credential
   -Credential $cred
 ```
 
-4. Testar se o Windows chama o provedor:
+5. Testar se o Windows chama o provedor:
 
 ```powershell
 & "$env:LOCALAPPDATA\RemoteA3\bin\remote-a3-test-virtual-cert.cmd" `
