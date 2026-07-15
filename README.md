@@ -1,6 +1,8 @@
-# Remote A3
+﻿# Remote A3
 
-Protótipo para descobrir certificados A3 conectados em computadores do dominio e desenhar o caminho para assinatura remota pela intranet.
+![Remote A3](assets/logo.png)
+
+ProtÃ³tipo para descobrir certificados A3 conectados em computadores do dominio e desenhar o caminho para assinatura remota pela intranet.
 
 ## O que este projeto cobre agora
 
@@ -157,3 +159,4 @@ Limitacoes atuais:
 2. Implementar `ExportKey` para comparacao completa da chave publica.
 3. Adicionar HTTPS interno automatico por CA do dominio.
 4. Adicionar CSP legado se algum sistema antigo nao usar CNG.
+
