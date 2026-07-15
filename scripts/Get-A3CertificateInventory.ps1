@@ -152,6 +152,9 @@ function ConvertTo-CertificateInventoryItem {
         }
     }
     $likelyA3 = Test-LikelyA3Certificate -Certificate $Certificate -KeyInfo $keyInfo
+    $cleanThumbprint = ($Certificate.Thumbprint -replace "\s", "").ToUpperInvariant()
+    $remoteA3ConfigPath = Join-Path $env:LOCALAPPDATA "RemoteA3\keys\remote-a3-$cleanThumbprint.remotea3"
+    $isRemoteA3Virtual = Test-Path -LiteralPath $remoteA3ConfigPath
     $publicCertificateBase64 = $null
 
     if ($IncludePublicCertificate) {
@@ -169,6 +172,7 @@ function ConvertTo-CertificateInventoryItem {
         Issuer                  = $Certificate.Issuer
         FriendlyName            = $Certificate.FriendlyName
         Thumbprint              = $Certificate.Thumbprint
+        IsRemoteA3Virtual       = $isRemoteA3Virtual
         SerialNumber            = $Certificate.SerialNumber
         NotBefore               = $Certificate.NotBefore.ToUniversalTime().ToString("o")
         NotAfter                = $Certificate.NotAfter.ToUniversalTime().ToString("o")
