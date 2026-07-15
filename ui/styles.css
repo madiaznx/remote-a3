@@ -1,0 +1,182 @@
+:root {
+  color-scheme: light;
+  font-family: "Segoe UI", Arial, sans-serif;
+  background: #f7f8fb;
+  color: #18212f;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  background: #f7f8fb;
+}
+
+button {
+  border: 1px solid #b8c2d6;
+  background: #ffffff;
+  color: #18212f;
+  border-radius: 6px;
+  font: inherit;
+  padding: 8px 14px;
+  cursor: pointer;
+}
+
+button:hover {
+  border-color: #486a9f;
+}
+
+.shell {
+  width: min(1120px, calc(100vw - 32px));
+  margin: 0 auto;
+  padding: 24px 0;
+}
+
+.topbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 18px;
+}
+
+h1,
+h2,
+p {
+  margin: 0;
+}
+
+h1 {
+  font-size: 26px;
+  font-weight: 650;
+}
+
+h2 {
+  font-size: 17px;
+  font-weight: 650;
+}
+
+#subtitle {
+  margin-top: 5px;
+  color: #5b6678;
+  font-size: 13px;
+}
+
+.actions {
+  display: flex;
+  gap: 8px;
+}
+
+.status-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 10px;
+  margin-bottom: 18px;
+}
+
+.status-item {
+  background: #ffffff;
+  border: 1px solid #d9dfeb;
+  border-radius: 8px;
+  padding: 12px;
+}
+
+.status-item span {
+  display: block;
+  color: #69758a;
+  font-size: 12px;
+  margin-bottom: 5px;
+}
+
+.status-item strong {
+  font-size: 18px;
+}
+
+.table-panel {
+  background: #ffffff;
+  border: 1px solid #d9dfeb;
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+.table-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 14px 16px;
+  border-bottom: 1px solid #e4e8f0;
+}
+
+#lastUpdated {
+  color: #6a7485;
+  font-size: 12px;
+}
+
+.table-wrap {
+  overflow: auto;
+}
+
+table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+th,
+td {
+  text-align: left;
+  border-bottom: 1px solid #edf0f5;
+  padding: 11px 16px;
+  vertical-align: middle;
+  font-size: 13px;
+}
+
+th {
+  background: #fbfcfe;
+  color: #647086;
+  font-weight: 650;
+}
+
+.primary {
+  font-weight: 600;
+}
+
+.secondary {
+  color: #6b7688;
+  margin-top: 3px;
+  font-size: 12px;
+}
+
+.mono {
+  font-family: "Cascadia Mono", Consolas, monospace;
+  font-size: 12px;
+}
+
+.empty-state {
+  padding: 28px 16px;
+  color: #667287;
+  text-align: center;
+}
+
+.logs {
+  display: flex;
+  gap: 8px;
+  margin-top: 14px;
+}
+
+.link-button {
+  background: transparent;
+}
+
+@media (max-width: 760px) {
+  .topbar,
+  .table-header {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .status-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
