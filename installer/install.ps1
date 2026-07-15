@@ -87,6 +87,10 @@ $startMenuDir = Join-Path $env:APPDATA "Microsoft\Windows\Start Menu\Programs\Re
 New-Item -ItemType Directory -Path $startMenuDir -Force | Out-Null
 
 $shell = New-Object -ComObject WScript.Shell
+$shortcutIcon = Join-Path $InstallDir "assets\remote-a3.ico"
+if (-not (Test-Path -LiteralPath $shortcutIcon)) {
+    $shortcutIcon = "$env:SystemRoot\System32\shell32.dll,44"
+}
 
 function New-RemoteA3Shortcut {
     param(
@@ -102,7 +106,7 @@ function New-RemoteA3Shortcut {
     $shortcut.TargetPath = "$env:SystemRoot\System32\WindowsPowerShell\v1.0\powershell.exe"
     $shortcut.Arguments = $Arguments
     $shortcut.WorkingDirectory = $InstallDir
-    $shortcut.IconLocation = "$env:SystemRoot\System32\shell32.dll,44"
+    $shortcut.IconLocation = $shortcutIcon
     $shortcut.Save()
 }
 
