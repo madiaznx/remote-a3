@@ -60,7 +60,7 @@ if ($Unregister) {
 }
 else {
     if ($PSCmdlet.ShouldProcess("Remote A3 Key Storage Provider", "Registrar KSP CNG")) {
-        & $installedAdmin register
+        & $installedAdmin register $installedDll
     }
 }
 
@@ -72,4 +72,3 @@ else {
     AdminPath      = $installedAdmin
     VerifyCommand  = "certutil -csplist"
 }
-
