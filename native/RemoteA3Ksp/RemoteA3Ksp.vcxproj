@@ -21,20 +21,20 @@
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'" Label="Configuration">
     <ConfigurationType>DynamicLibrary</ConfigurationType>
     <UseDebugLibraries>true</UseDebugLibraries>
-    <PlatformToolset>v143</PlatformToolset>
+    <PlatformToolset>v142</PlatformToolset>
     <CharacterSet>Unicode</CharacterSet>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'" Label="Configuration">
     <ConfigurationType>DynamicLibrary</ConfigurationType>
     <UseDebugLibraries>false</UseDebugLibraries>
-    <PlatformToolset>v143</PlatformToolset>
+    <PlatformToolset>v142</PlatformToolset>
     <WholeProgramOptimization>true</WholeProgramOptimization>
     <CharacterSet>Unicode</CharacterSet>
   </PropertyGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.props" />
   <PropertyGroup>
-    <OutDir>$(SolutionDir)..\..\dist\native\$(Platform)\$(Configuration)\</OutDir>
-    <IntDir>$(SolutionDir)..\..\build\native\RemoteA3Ksp\$(Platform)\$(Configuration)\</IntDir>
+    <OutDir>$(SolutionDir)..\dist\native\$(Platform)\$(Configuration)\</OutDir>
+    <IntDir>$(SolutionDir)..\build\native\RemoteA3Ksp\$(Platform)\$(Configuration)\</IntDir>
     <TargetName>RemoteA3Ksp</TargetName>
   </PropertyGroup>
   <ItemDefinitionGroup>
@@ -46,7 +46,7 @@
     </ClCompile>
     <Link>
       <ModuleDefinitionFile>RemoteA3Ksp.def</ModuleDefinitionFile>
-      <AdditionalDependencies>winhttp.lib;credui.lib;crypt32.lib;bcrypt.lib;ncrypt.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies>winhttp.lib;crypt32.lib;bcrypt.lib;ncrypt.lib;%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)'=='Release'">
@@ -65,4 +65,3 @@
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
 </Project>
-
