@@ -126,6 +126,8 @@ Nota: a partir da `0.3.6`, o registro do KSP publica corretamente a funcao CNG `
 
 Nota: a partir da `0.3.7`, o prompt local de PIN usa flags compativeis com `CredUIPromptForCredentials`. Isso corrige o erro `Sinalizadores invalidos` ao chamar `SignData`.
 
+Nota: a partir da `0.3.8`, o prompt local tenta usar o modo de senha/PIN apenas, evitando a tela com usuario e senha sempre que o Windows aceitar essa combinacao de flags.
+
 Fluxo no PC atual:
 
 1. Instalar o setup que inclui os binarios nativos `RemoteA3Ksp.dll` e `RemoteA3KspAdmin.exe`.
