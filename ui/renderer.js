@@ -1,5 +1,7 @@
 const state = {
-  logs: {}
+  logs: {},
+  status: null,
+  available: []
 };
 
 function shortThumbprint(value) {
@@ -27,33 +29,52 @@ function setText(id, value) {
 function renderStatus(data) {
   const certs = Array.isArray(data.VirtualCertificates) ? data.VirtualCertificates : [];
   state.logs = data.Logs || {};
+  state.status = data;
 
   setText("subtitle", `${data.ComputerName || "-"} - Remote A3 ${data.Version || ""}`);
   setText("agentStatus", data.Agent && data.Agent.HealthOk ? "Online" : "Offline");
-  setText("importStatus", data.AutoImport && data.AutoImport.TaskExists ? data.AutoImport.TaskState || "Registrada" : "Ausente");
   setText("kspStatus", data.Ksp && data.Ksp.ProviderOpenOk ? "OK" : "Falha");
   setText("certCount", String(certs.length));
   setText("lastUpdated", new Date().toLocaleString("pt-BR"));
+}
+
+function renderAvailable(certs) {
+  state.available = Array.isArray(certs) ? certs : [];
+  setText("foundCount", String(state.available.filter((cert) => cert.Thumbprint).length));
 
   const body = document.getElementById("certTableBody");
   body.innerHTML = "";
 
-  for (const cert of certs) {
+  for (const cert of state.available) {
     const row = document.createElement("tr");
+    const canImport = cert.Thumbprint && cert.AgentUrl && !cert.Imported;
+    const button = canImport
+      ? `<button class="import-button" type="button" data-agent="${encodeURIComponent(cert.AgentUrl)}" data-thumbprint="${encodeURIComponent(cert.Thumbprint)}">Importar</button>`
+      : `<button type="button" disabled>${cert.Imported ? "Importado" : "Indisponivel"}</button>`;
+    const status = cert.DiscoveryError ? "Credencial necessaria" : cert.Imported ? "Importado" : "Disponivel";
+
     row.innerHTML = `
       <td>
         <div class="primary">${subjectName(cert.Subject)}</div>
-        <div class="secondary">${shortThumbprint(cert.Thumbprint)}</div>
+        <div class="secondary">${cert.Thumbprint ? shortThumbprint(cert.Thumbprint) : cert.DiscoveryError || ""}</div>
       </td>
-      <td>${cert.SourceHost || "-"}</td>
+      <td>${cert.MachineName || cert.SourceHost || "-"}</td>
       <td><span class="mono">${cert.AgentUrl || "-"}</span></td>
       <td>${formatDate(cert.NotAfter)}</td>
-      <td>${cert.HasPrivateKey ? "Virtual" : "Ausente"}</td>
+      <td>${status}</td>
+      <td>${button}</td>
     `;
     body.appendChild(row);
   }
 
-  document.getElementById("emptyState").style.display = certs.length ? "none" : "block";
+  document.querySelectorAll(".import-button").forEach((button) => {
+    button.addEventListener("click", () => importCertificate({
+      AgentUrl: decodeURIComponent(button.dataset.agent),
+      Thumbprint: decodeURIComponent(button.dataset.thumbprint)
+    }));
+  });
+
+  document.getElementById("emptyState").style.display = state.available.length ? "none" : "block";
 }
 
 async function refresh() {
@@ -65,11 +86,31 @@ async function refresh() {
   }
 
   renderStatus(result.data);
+
+  setText("subtitle", "Procurando certificados anunciados...");
+  const available = await window.remoteA3.available();
+  if (available.ok) {
+    renderAvailable(available.data);
+    setText("subtitle", `${result.data.ComputerName || "-"} - Remote A3 ${result.data.Version || ""}`);
+  } else {
+    setText("subtitle", available.error || "Falha ao descobrir certificados.");
+  }
 }
 
 async function setup() {
   setText("subtitle", "Reparando configuracao...");
   await window.remoteA3.setup();
+  await refresh();
+}
+
+async function importCertificate(certificate) {
+  setText("subtitle", "Importando certificado...");
+  const result = await window.remoteA3.importCertificate(certificate);
+  if (!result.ok) {
+    setText("subtitle", result.stderr || result.error || "Falha ao importar certificado.");
+    return;
+  }
+
   await refresh();
 }
 
