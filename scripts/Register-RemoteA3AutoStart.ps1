@@ -152,7 +152,7 @@ if ($Advertise) {
 
 $action = New-ScheduledTaskAction `
     -Execute "$env:SystemRoot\System32\WindowsPowerShell\v1.0\powershell.exe" `
-    -Argument "-NoProfile -ExecutionPolicy Bypass -File `"$autoAgentPath`""
+    -Argument "-NoProfile -WindowStyle Hidden -ExecutionPolicy Bypass -File `"$autoAgentPath`""
 
 if ($Trigger -eq "AtStartup") {
     $taskTrigger = New-ScheduledTaskTrigger -AtStartup
@@ -166,6 +166,7 @@ else {
 $settings = New-ScheduledTaskSettingsSet `
     -AllowStartIfOnBatteries `
     -DontStopIfGoingOnBatteries `
+    -Hidden `
     -MultipleInstances IgnoreNew `
     -RestartCount 3 `
     -RestartInterval (New-TimeSpan -Minutes 1)
