@@ -106,6 +106,10 @@ typedef struct _NCRYPT_KEY_STORAGE_FUNCTION_TABLE {
 #define CREDUI_FLAGS_ALWAYS_SHOW_UI 0x00000080
 #endif
 
+#ifndef CREDUI_FLAGS_GENERIC_CREDENTIALS
+#define CREDUI_FLAGS_GENERIC_CREDENTIALS 0x00040000
+#endif
+
 typedef struct _RA3_CREDUI_INFOW {
     DWORD cbSize;
     HWND hwndParent;
@@ -372,6 +376,12 @@ static HRESULT PromptForPin(KeyContext& key, DWORD flags)
     wchar_t password[CREDUI_MAX_PASSWORD_LENGTH + 1]{};
     BOOL save = FALSE;
 
+    DWORD promptFlags =
+        CREDUI_FLAGS_DO_NOT_PERSIST |
+        CREDUI_FLAGS_EXCLUDE_CERTIFICATES |
+        CREDUI_FLAGS_GENERIC_CREDENTIALS |
+        CREDUI_FLAGS_ALWAYS_SHOW_UI;
+
     DWORD result = prompt(
         &info,
         L"RemoteA3",
@@ -382,7 +392,26 @@ static HRESULT PromptForPin(KeyContext& key, DWORD flags)
         password,
         ARRAYSIZE(password),
         &save,
-        CREDUI_FLAGS_DO_NOT_PERSIST | CREDUI_FLAGS_EXCLUDE_CERTIFICATES | CREDUI_FLAGS_KEEP_USERNAME | CREDUI_FLAGS_ALWAYS_SHOW_UI);
+        promptFlags);
+
+    if (result == ERROR_INVALID_FLAGS) {
+        promptFlags =
+            CREDUI_FLAGS_DO_NOT_PERSIST |
+            CREDUI_FLAGS_EXCLUDE_CERTIFICATES |
+            CREDUI_FLAGS_GENERIC_CREDENTIALS;
+
+        result = prompt(
+            &info,
+            L"RemoteA3",
+            nullptr,
+            0,
+            username,
+            ARRAYSIZE(username),
+            password,
+            ARRAYSIZE(password),
+            &save,
+            promptFlags);
+    }
 
     if (result != NO_ERROR) {
         SecureZeroMemory(password, sizeof(password));
