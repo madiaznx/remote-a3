@@ -41,6 +41,12 @@ powershell.exe -NoProfile -ExecutionPolicy Bypass -File "%~dp0..\scripts\Invoke-
     "remote-a3-token-host-ntlm.cmd" = '@echo off
 powershell.exe -NoProfile -ExecutionPolicy Bypass -File "%~dp0..\scripts\Repair-RemoteA3TokenHost.ps1" %*
 '
+    "remote-a3-token-host-ntlm-silent.cmd" = '@echo off
+setlocal
+set "POWERSHELL=%SystemRoot%\System32\WindowsPowerShell\v1.0\powershell.exe"
+start "" /min "%POWERSHELL%" -NoProfile -WindowStyle Hidden -ExecutionPolicy Bypass -File "%~dp0..\scripts\Invoke-RemoteA3TokenHostNtlmSilent.ps1" %*
+exit /b 0
+'
     "remote-a3-find-port.cmd" = '@echo off
 powershell.exe -NoProfile -ExecutionPolicy Bypass -File "%~dp0..\scripts\Find-RemoteA3Port.ps1" %*
 '
@@ -135,6 +141,14 @@ New-RemoteA3Shortcut `
 New-RemoteA3Shortcut `
     -Name "Remote A3 Token Host NTLM Admin.lnk" `
     -Arguments "-NoExit -NoProfile -ExecutionPolicy Bypass -File `"$InstallDir\scripts\Repair-RemoteA3TokenHost.ps1`""
+
+$silentShortcutPath = Join-Path $startMenuDir "Remote A3 Token Host NTLM Script.lnk"
+$silentShortcut = $shell.CreateShortcut($silentShortcutPath)
+$silentShortcut.TargetPath = "$env:SystemRoot\System32\cmd.exe"
+$silentShortcut.Arguments = "/c `"$InstallDir\bin\remote-a3-token-host-ntlm-silent.cmd`""
+$silentShortcut.WorkingDirectory = $InstallDir
+$silentShortcut.IconLocation = $shortcutIcon
+$silentShortcut.Save()
 
 New-RemoteA3Shortcut `
     -Name "Remote A3 Receive Advertisements.lnk" `
