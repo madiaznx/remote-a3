@@ -74,6 +74,13 @@ powershell.exe -NoProfile -ExecutionPolicy Bypass -File "%~dp0..\scripts\Install
     "remote-a3-test-virtual-cert.cmd" = '@echo off
 powershell.exe -NoProfile -ExecutionPolicy Bypass -File "%~dp0..\scripts\Test-RemoteA3VirtualCertificate.ps1" %*
 '
+    "remote-a3-test-virtual-cert-32.cmd" = '@echo off
+if exist "%SystemRoot%\SysWOW64\WindowsPowerShell\v1.0\powershell.exe" (
+  "%SystemRoot%\SysWOW64\WindowsPowerShell\v1.0\powershell.exe" -NoProfile -ExecutionPolicy Bypass -File "%~dp0..\scripts\Test-RemoteA3VirtualCertificate.ps1" %*
+) else (
+  powershell.exe -NoProfile -ExecutionPolicy Bypass -File "%~dp0..\scripts\Test-RemoteA3VirtualCertificate.ps1" %*
+)
+'
 }
 
 foreach ($entry in $launchers.GetEnumerator()) {
@@ -165,6 +172,14 @@ New-RemoteA3Shortcut `
 New-RemoteA3Shortcut `
     -Name "Remote A3 Test KSP.lnk" `
     -Arguments "-NoExit -NoProfile -ExecutionPolicy Bypass -File `"$InstallDir\scripts\Test-RemoteA3Ksp.ps1`""
+
+$testVirtualCert32ShortcutPath = Join-Path $startMenuDir "Remote A3 Test Virtual Cert 32-bit.lnk"
+$testVirtualCert32Shortcut = $shell.CreateShortcut($testVirtualCert32ShortcutPath)
+$testVirtualCert32Shortcut.TargetPath = "$env:SystemRoot\System32\cmd.exe"
+$testVirtualCert32Shortcut.Arguments = "/k `"$InstallDir\bin\remote-a3-test-virtual-cert-32.cmd`""
+$testVirtualCert32Shortcut.WorkingDirectory = $InstallDir
+$testVirtualCert32Shortcut.IconLocation = $shortcutIcon
+$testVirtualCert32Shortcut.Save()
 
 New-RemoteA3Shortcut `
     -Name "Remote A3 Stop Agent.lnk" `
