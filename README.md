@@ -132,6 +132,8 @@ Nota: a partir da `0.3.9`, quando o certificado virtual e importado com `-Creden
 
 Nota: a partir da `0.4.0`, o importador evita sintaxe C# moderna no bloco `Add-Type`, mantendo compatibilidade com o compilador padrao do Windows PowerShell.
 
+Nota: a partir da `0.4.1`, o KSP grava diagnostico em `%LOCALAPPDATA%\RemoteA3\logs\ksp.log` e usa o esquema de autenticacao anunciado pelo agente remoto antes de reenviar `/sign` com a credencial salva.
+
 Fluxo no PC atual:
 
 1. Instalar o setup que inclui os binarios nativos `RemoteA3Ksp.dll` e `RemoteA3KspAdmin.exe`.
