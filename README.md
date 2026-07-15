@@ -116,7 +116,44 @@ Esse teste assina o hash de um arquivo. Ele ainda nao cria containers finais com
 
 ## Proximos passos para virar produto
 
-1. Criar o Remote A3 KSP/CSP nativo.
-2. Importar o certificado publico no PC atual com a propriedade de chave apontando para o Remote A3 KSP/CSP.
+## KSP nativo experimental
+
+A partir da `0.3.0`, o projeto inclui a primeira versao do **Remote A3 Key Storage Provider** para CNG. Ele e experimental e ainda precisa ser validado com os aplicativos reais.
+
+Fluxo no PC atual:
+
+1. Instalar/copiar os binarios nativos `RemoteA3Ksp.dll` e `RemoteA3KspAdmin.exe`.
+2. Registrar o KSP como administrador:
+
+```powershell
+& "$env:LOCALAPPDATA\RemoteA3\bin\remote-a3-install-ksp.cmd" -NativeBuildDirectory "C:\caminho\RemoteA3Native-x64-Release"
+```
+
+3. Importar um certificado remoto virtual apontando para o agente:
+
+```powershell
+& "$env:LOCALAPPDATA\RemoteA3\bin\remote-a3-install-virtual-cert.cmd" `
+  -AgentUrl "http://CARTORIO-02:28765/" `
+  -Thumbprint "THUMBPRINT_DO_CERTIFICADO"
+```
+
+4. Testar se o Windows chama o provedor:
+
+```powershell
+& "$env:LOCALAPPDATA\RemoteA3\bin\remote-a3-test-virtual-cert.cmd" `
+  -Thumbprint "THUMBPRINT_DO_CERTIFICADO"
+```
+
+Limitacoes atuais:
+
+- KSP CNG apenas; CSP legado ainda nao foi implementado.
+- Assinatura RSA PKCS#1/PSS.
+- O PIN e pedido no PC atual pelo KSP e enviado ao agente; use HTTPS antes de producao.
+- Alguns aplicativos podem exigir `ExportKey`/comparacao de chave publica, que ainda esta limitado nesta alpha.
+
+## Proximos passos para virar produto
+
+1. Validar o KSP com e-CAC, assinadores PDF e emissores usados no ambiente.
+2. Implementar `ExportKey` para comparacao completa da chave publica.
 3. Adicionar HTTPS interno automatico por CA do dominio.
-4. Adicionar politica por grupo do Active Directory.
+4. Adicionar CSP legado se algum sistema antigo nao usar CNG.
