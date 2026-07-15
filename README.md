@@ -40,6 +40,14 @@ Com linha de comando:
 "$env:LOCALAPPDATA\RemoteA3\bin\remote-a3-auto-register.cmd" -StartNow
 ```
 
+Se o PC cliente conseguir listar certificados com usuario e senha, mas o KSP receber `401`/`Negotiate` ao assinar, rode isto no computador que esta com o token/cartao A3 conectado:
+
+```powershell
+& "$env:LOCALAPPDATA\RemoteA3\bin\remote-a3-token-host-ntlm.cmd" -Port 28765
+```
+
+Esse script para a tarefa antiga, registra o agente com autenticacao `Ntlm`, inicia a tarefa de novo e testa `http://localhost:28765/health`.
+
 Para procurar uma porta livre considerando varios computadores do dominio:
 
 ```powershell
@@ -137,6 +145,8 @@ Nota: a partir da `0.4.1`, o KSP grava diagnostico em `%LOCALAPPDATA%\RemoteA3\l
 Nota: a partir da `0.4.2`, o KSP faz o handshake WinHTTP autenticado antes de reenviar o JSON de assinatura e tambem tenta `HOST\usuario` quando a credencial foi salva sem dominio.
 
 Nota: a partir da `0.4.3`, o KSP mantem o mesmo corpo JSON durante o handshake autenticado do WinHTTP, evitando `ERROR_INVALID_PARAMETER` (`87`) ao reenviar `/sign`.
+
+Nota: a partir da `0.4.4`, o setup inclui `remote-a3-token-host-ntlm.cmd` para reconfigurar rapidamente o computador com token em `Ntlm`, reiniciando a tarefa agendada e testando o `/health` local.
 
 Fluxo no PC atual:
 
