@@ -160,6 +160,8 @@ Nota: a partir da `0.4.5`, esse mesmo reparo tambem encerra automaticamente um p
 
 Nota: a partir da `0.4.6`, o setup inclui um modo de script sem terminal (`remote-a3-token-host-ntlm-silent.cmd`) para configurar o computador com token sem abrir PowerShell interativo.
 
+Nota: a partir da `0.4.7`, o setup inclui tambem a DLL 32-bit do KSP em `SysWOW64`, para aplicativos/hosts 32-bit como alguns componentes WebPKI conseguirem abrir a chave privada do certificado virtual.
+
 Fluxo no PC atual:
 
 1. Instalar o setup que inclui os binarios nativos `RemoteA3Ksp.dll` e `RemoteA3KspAdmin.exe`.
