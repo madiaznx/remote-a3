@@ -122,11 +122,11 @@ A partir da `0.3.0`, o projeto inclui a primeira versao do **Remote A3 Key Stora
 
 Fluxo no PC atual:
 
-1. Instalar/copiar os binarios nativos `RemoteA3Ksp.dll` e `RemoteA3KspAdmin.exe`.
+1. Instalar o setup que inclui os binarios nativos `RemoteA3Ksp.dll` e `RemoteA3KspAdmin.exe`.
 2. Registrar o KSP como administrador:
 
 ```powershell
-& "$env:LOCALAPPDATA\RemoteA3\bin\remote-a3-install-ksp.cmd" -NativeBuildDirectory "C:\caminho\RemoteA3Native-x64-Release"
+& "$env:LOCALAPPDATA\RemoteA3\bin\remote-a3-install-ksp.cmd"
 ```
 
 3. Importar um certificado remoto virtual apontando para o agente:
