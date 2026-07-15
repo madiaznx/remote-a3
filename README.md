@@ -128,6 +128,8 @@ Nota: a partir da `0.3.7`, o prompt local de PIN usa flags compativeis com `Cred
 
 Nota: a partir da `0.3.8`, o prompt local tenta usar o modo de senha/PIN apenas, evitando a tela com usuario e senha sempre que o Windows aceitar essa combinacao de flags.
 
+Nota: a partir da `0.3.9`, quando o certificado virtual e importado com `-Credential`, a credencial de rede do agente remoto e salva no Gerenciador de Credenciais do Windows e reutilizada pelo KSP durante a assinatura. O PIN do A3 continua sendo solicitado no PC atual.
+
 Fluxo no PC atual:
 
 1. Instalar o setup que inclui os binarios nativos `RemoteA3Ksp.dll` e `RemoteA3KspAdmin.exe`.
