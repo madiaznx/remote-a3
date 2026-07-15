@@ -677,7 +677,7 @@ static HRESULT HttpPostJson(
             return S_OK;
         };
 
-        HRESULT hr = sendAndReceive(!useStoredCredential);
+        HRESULT hr = sendAndReceive(true);
         if (FAILED(hr)) {
             WinHttpCloseHandle(request);
             return hr;
