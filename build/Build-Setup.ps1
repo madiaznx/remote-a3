@@ -47,6 +47,11 @@ foreach ($item in $payloadItems) {
     }
 }
 
+$nativeOutput = Join-Path $repoRoot "dist\native"
+if (Test-Path -LiteralPath $nativeOutput) {
+    Copy-Item -Path (Join-Path $nativeOutput "*") -Destination (Join-Path $payloadDir "native") -Recurse -Force
+}
+
 $sourceZip = Join-Path $outputDirResolved "RemoteA3-v$Version-source.zip"
 $payloadZip = Join-Path $setupStageDir "payload.zip"
 $setupExeTemp = Join-Path $outDir "RemoteA3-Setup-v$Version.exe"
