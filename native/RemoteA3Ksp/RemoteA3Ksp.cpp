@@ -2,6 +2,7 @@
 #include <bcrypt.h>
 #include <ncrypt.h>
 #include <wincrypt.h>
+#include <wincred.h>
 #include <winhttp.h>
 
 #if __has_include(<ncrypt_provider.h>)
@@ -81,6 +82,7 @@ typedef struct _NCRYPT_KEY_STORAGE_FUNCTION_TABLE {
 
 #pragma comment(lib, "winhttp.lib")
 #pragma comment(lib, "crypt32.lib")
+#pragma comment(lib, "advapi32.lib")
 
 #ifndef CREDUI_MAX_USERNAME_LENGTH
 #define CREDUI_MAX_USERNAME_LENGTH 513
@@ -151,6 +153,9 @@ struct KeyContext {
     std::wstring scope = L"Both";
     std::wstring storeName = L"My";
     std::wstring publicCertificateBase64;
+    std::wstring credentialTarget;
+    std::wstring networkUser;
+    std::wstring networkPassword;
     std::wstring cachedPin;
     DWORD keyLength = 2048;
 };
@@ -272,6 +277,34 @@ static std::wstring KeyConfigPath(const std::wstring& containerName)
     return base + L"\\RemoteA3\\keys\\" + containerName + L".remotea3";
 }
 
+static bool ReadStoredCredential(const std::wstring& targetName, std::wstring& username, std::wstring& password)
+{
+    if (targetName.empty()) {
+        return false;
+    }
+
+    PCREDENTIALW credential = nullptr;
+    if (!CredReadW(targetName.c_str(), CRED_TYPE_GENERIC, 0, &credential)) {
+        return false;
+    }
+
+    if (credential->UserName) {
+        username = credential->UserName;
+    }
+
+    if (credential->CredentialBlob && credential->CredentialBlobSize > 0) {
+        password.assign(
+            reinterpret_cast<const wchar_t*>(credential->CredentialBlob),
+            credential->CredentialBlobSize / sizeof(wchar_t));
+        if (!password.empty() && password.back() == L'\0') {
+            password.pop_back();
+        }
+    }
+
+    CredFree(credential);
+    return !username.empty();
+}
+
 static bool LoadKeyConfig(const std::wstring& containerName, KeyContext& key)
 {
     std::wstring path = KeyConfigPath(containerName);
@@ -299,7 +332,10 @@ static bool LoadKeyConfig(const std::wstring& containerName, KeyContext& key)
         else if (_wcsicmp(name.c_str(), L"storeName") == 0) key.storeName = value;
         else if (_wcsicmp(name.c_str(), L"publicCertificateBase64") == 0) key.publicCertificateBase64 = value;
         else if (_wcsicmp(name.c_str(), L"keyLength") == 0) key.keyLength = wcstoul(value.c_str(), nullptr, 10);
+        else if (_wcsicmp(name.c_str(), L"credentialTarget") == 0) key.credentialTarget = value;
     }
+
+    ReadStoredCredential(key.credentialTarget, key.networkUser, key.networkPassword);
 
     return !key.agentUrl.empty() && !key.thumbprint.empty();
 }
@@ -452,7 +488,12 @@ static HRESULT PromptForPin(KeyContext& key, DWORD flags)
     return S_OK;
 }
 
-static HRESULT HttpPostJson(const std::wstring& url, const std::wstring& json, std::string& response)
+static HRESULT HttpPostJson(
+    const std::wstring& url,
+    const std::wstring& json,
+    const std::wstring& networkUser,
+    const std::wstring& networkPassword,
+    std::string& response)
 {
     URL_COMPONENTS parts{};
     parts.dwStructSize = sizeof(parts);
@@ -479,65 +520,113 @@ static HRESULT HttpPostJson(const std::wstring& url, const std::wstring& json, s
 
     DWORD requestFlags = parts.nScheme == INTERNET_SCHEME_HTTPS ? WINHTTP_FLAG_SECURE : 0;
     std::wstring requestPath(path, parts.dwUrlPathLength);
-    HINTERNET request = WinHttpOpenRequest(connect, L"POST", requestPath.c_str(), nullptr, WINHTTP_NO_REFERER, WINHTTP_DEFAULT_ACCEPT_TYPES, requestFlags);
-    if (!request) {
-        DWORD error = GetLastError();
-        WinHttpCloseHandle(connect);
-        WinHttpCloseHandle(session);
-        return HRESULT_FROM_WIN32(error);
-    }
 
-    DWORD autoLogon = WINHTTP_AUTOLOGON_SECURITY_LEVEL_LOW;
-    WinHttpSetOption(request, WINHTTP_OPTION_AUTOLOGON_POLICY, &autoLogon, sizeof(autoLogon));
+    auto postOnce = [&](bool useStoredCredential, DWORD authScheme, DWORD& statusCode, std::string& bodyResponse) -> HRESULT {
+        HINTERNET request = WinHttpOpenRequest(connect, L"POST", requestPath.c_str(), nullptr, WINHTTP_NO_REFERER, WINHTTP_DEFAULT_ACCEPT_TYPES, requestFlags);
+        if (!request) {
+            return HRESULT_FROM_WIN32(GetLastError());
+        }
 
-    std::string body = WideToUtf8(json);
-    const wchar_t* headers = L"Content-Type: application/json; charset=utf-8\r\n";
-    BOOL ok = WinHttpSendRequest(
-        request,
-        headers,
-        static_cast<DWORD>(-1L),
-        body.empty() ? nullptr : body.data(),
-        static_cast<DWORD>(body.size()),
-        static_cast<DWORD>(body.size()),
-        0);
+        DWORD autoLogon = WINHTTP_AUTOLOGON_SECURITY_LEVEL_LOW;
+        WinHttpSetOption(request, WINHTTP_OPTION_AUTOLOGON_POLICY, &autoLogon, sizeof(autoLogon));
 
-    if (ok) {
-        ok = WinHttpReceiveResponse(request, nullptr);
-    }
+        if (useStoredCredential) {
+            if (!WinHttpSetCredentials(
+                    request,
+                    WINHTTP_AUTH_TARGET_SERVER,
+                    authScheme,
+                    networkUser.c_str(),
+                    networkPassword.c_str(),
+                    nullptr)) {
+                DWORD error = GetLastError();
+                WinHttpCloseHandle(request);
+                return HRESULT_FROM_WIN32(error);
+            }
+        }
 
-    if (!ok) {
-        DWORD error = GetLastError();
+        std::string body = WideToUtf8(json);
+        const wchar_t* headers = L"Content-Type: application/json; charset=utf-8\r\n";
+        BOOL ok = WinHttpSendRequest(
+            request,
+            headers,
+            static_cast<DWORD>(-1L),
+            body.empty() ? nullptr : body.data(),
+            static_cast<DWORD>(body.size()),
+            static_cast<DWORD>(body.size()),
+            0);
+
+        if (ok) {
+            ok = WinHttpReceiveResponse(request, nullptr);
+        }
+
+        if (!ok) {
+            DWORD error = GetLastError();
+            WinHttpCloseHandle(request);
+            return HRESULT_FROM_WIN32(error);
+        }
+
+        statusCode = 0;
+        DWORD statusSize = sizeof(statusCode);
+        WinHttpQueryHeaders(request, WINHTTP_QUERY_STATUS_CODE | WINHTTP_QUERY_FLAG_NUMBER, nullptr, &statusCode, &statusSize, nullptr);
+
+        bodyResponse.clear();
+        if (statusCode >= 200 && statusCode <= 299) {
+            DWORD available = 0;
+            while (WinHttpQueryDataAvailable(request, &available) && available > 0) {
+                std::string chunk(available, '\0');
+                DWORD read = 0;
+                if (!WinHttpReadData(request, chunk.data(), available, &read)) {
+                    break;
+                }
+                chunk.resize(read);
+                bodyResponse += chunk;
+            }
+        }
+
         WinHttpCloseHandle(request);
-        WinHttpCloseHandle(connect);
-        WinHttpCloseHandle(session);
-        return HRESULT_FROM_WIN32(error);
-    }
+        return S_OK;
+    };
 
     DWORD statusCode = 0;
-    DWORD statusSize = sizeof(statusCode);
-    WinHttpQueryHeaders(request, WINHTTP_QUERY_STATUS_CODE | WINHTTP_QUERY_FLAG_NUMBER, nullptr, &statusCode, &statusSize, nullptr);
-    if (statusCode < 200 || statusCode > 299) {
-        WinHttpCloseHandle(request);
+    HRESULT hr = postOnce(false, 0, statusCode, response);
+    if (FAILED(hr)) {
         WinHttpCloseHandle(connect);
         WinHttpCloseHandle(session);
+        return hr;
+    }
+
+    if (statusCode == HTTP_STATUS_DENIED && !networkUser.empty()) {
+        DWORD schemes[] = {
+            WINHTTP_AUTH_SCHEME_NEGOTIATE,
+            WINHTTP_AUTH_SCHEME_NTLM,
+            WINHTTP_AUTH_SCHEME_BASIC,
+        };
+
+        for (DWORD scheme : schemes) {
+            hr = postOnce(true, scheme, statusCode, response);
+            if (FAILED(hr)) {
+                WinHttpCloseHandle(connect);
+                WinHttpCloseHandle(session);
+                return hr;
+            }
+
+            if (statusCode >= 200 && statusCode <= 299) {
+                break;
+            }
+
+            if (statusCode != HTTP_STATUS_DENIED) {
+                break;
+            }
+        }
+    }
+
+    WinHttpCloseHandle(connect);
+    WinHttpCloseHandle(session);
+
+    if (statusCode < 200 || statusCode > 299) {
         return HRESULT_FROM_WIN32(ERROR_ACCESS_DENIED);
     }
 
-    response.clear();
-    DWORD available = 0;
-    while (WinHttpQueryDataAvailable(request, &available) && available > 0) {
-        std::string chunk(available, '\0');
-        DWORD read = 0;
-        if (!WinHttpReadData(request, chunk.data(), available, &read)) {
-            break;
-        }
-        chunk.resize(read);
-        response += chunk;
-    }
-
-    WinHttpCloseHandle(request);
-    WinHttpCloseHandle(connect);
-    WinHttpCloseHandle(session);
     return S_OK;
 }
 
@@ -697,6 +786,9 @@ static HRESULT WINAPI RA3FreeKey(NCRYPT_PROV_HANDLE, NCRYPT_KEY_HANDLE hKey)
     if (!key->cachedPin.empty()) {
         SecureZeroMemory(key->cachedPin.data(), key->cachedPin.size() * sizeof(wchar_t));
     }
+    if (!key->networkPassword.empty()) {
+        SecureZeroMemory(key->networkPassword.data(), key->networkPassword.size() * sizeof(wchar_t));
+    }
     key->magic = 0;
     delete key;
     return S_OK;
@@ -763,7 +855,7 @@ static HRESULT WINAPI RA3SignHash(NCRYPT_PROV_HANDLE, NCRYPT_KEY_HANDLE hKey, VO
         L"\",\"pin\":\"" + EscapeJson(key->cachedPin) + L"\"}";
 
     std::string response;
-    hr = HttpPostJson(url, json, response);
+    hr = HttpPostJson(url, json, key->networkUser, key->networkPassword, response);
     if (FAILED(hr)) {
         return hr;
     }
