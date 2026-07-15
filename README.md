@@ -139,6 +139,16 @@ Fluxo no PC atual:
   -Thumbprint "THUMBPRINT_DO_CERTIFICADO"
 ```
 
+Se o agente remoto retornar `401 Nao Autorizado`, passe credencial explicita:
+
+```powershell
+$cred = Get-Credential
+& "$env:LOCALAPPDATA\RemoteA3\bin\remote-a3-install-virtual-cert.cmd" `
+  -AgentUrl "http://CARTORIO-02:28765/" `
+  -Thumbprint "THUMBPRINT_DO_CERTIFICADO" `
+  -Credential $cred
+```
+
 4. Testar se o Windows chama o provedor:
 
 ```powershell
