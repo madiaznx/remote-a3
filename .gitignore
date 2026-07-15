@@ -1,5 +1,10 @@
 dist/
 build/out/
 build/staging/
+build/native/
 *.sed
-
+*.obj
+*.iobj
+*.ipdb
+*.tlog
+*.recipe
