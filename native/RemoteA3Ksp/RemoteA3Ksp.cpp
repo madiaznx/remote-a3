@@ -3,7 +3,6 @@
 #include <ncrypt.h>
 #include <wincrypt.h>
 #include <winhttp.h>
-#include <credui.h>
 
 #if __has_include(<ncrypt_provider.h>)
 #include <ncrypt_provider.h>
@@ -81,8 +80,51 @@ typedef struct _NCRYPT_KEY_STORAGE_FUNCTION_TABLE {
 #include <vector>
 
 #pragma comment(lib, "winhttp.lib")
-#pragma comment(lib, "credui.lib")
 #pragma comment(lib, "crypt32.lib")
+
+#ifndef CREDUI_MAX_USERNAME_LENGTH
+#define CREDUI_MAX_USERNAME_LENGTH 513
+#endif
+
+#ifndef CREDUI_MAX_PASSWORD_LENGTH
+#define CREDUI_MAX_PASSWORD_LENGTH 256
+#endif
+
+#ifndef CREDUI_FLAGS_DO_NOT_PERSIST
+#define CREDUI_FLAGS_DO_NOT_PERSIST 0x00000002
+#endif
+
+#ifndef CREDUI_FLAGS_KEEP_USERNAME
+#define CREDUI_FLAGS_KEEP_USERNAME 0x00100000
+#endif
+
+#ifndef CREDUI_FLAGS_EXCLUDE_CERTIFICATES
+#define CREDUI_FLAGS_EXCLUDE_CERTIFICATES 0x00000008
+#endif
+
+#ifndef CREDUI_FLAGS_ALWAYS_SHOW_UI
+#define CREDUI_FLAGS_ALWAYS_SHOW_UI 0x00000080
+#endif
+
+typedef struct _RA3_CREDUI_INFOW {
+    DWORD cbSize;
+    HWND hwndParent;
+    PCWSTR pszMessageText;
+    PCWSTR pszCaptionText;
+    HBITMAP hbmBanner;
+} RA3_CREDUI_INFOW;
+
+typedef DWORD(WINAPI* RA3_CredUIPromptForCredentialsW)(
+    RA3_CREDUI_INFOW* pUiInfo,
+    PCWSTR pszTargetName,
+    const void* Reserved,
+    DWORD dwAuthError,
+    PWSTR pszUserName,
+    ULONG ulUserNameMaxChars,
+    PWSTR pszPassword,
+    ULONG ulPasswordMaxChars,
+    BOOL* save,
+    DWORD dwFlags);
 
 static constexpr DWORD kProviderMagic = 0x33415250; // PRA3
 static constexpr DWORD kKeyMagic = 0x33414B52;      // RKA3
@@ -308,7 +350,20 @@ static HRESULT PromptForPin(KeyContext& key, DWORD flags)
         return NTE_SILENT_CONTEXT;
     }
 
-    CREDUI_INFOW info{};
+    HMODULE credui = LoadLibraryW(L"credui.dll");
+    if (!credui) {
+        return HRESULT_FROM_WIN32(GetLastError());
+    }
+
+    auto prompt = reinterpret_cast<RA3_CredUIPromptForCredentialsW>(
+        GetProcAddress(credui, "CredUIPromptForCredentialsW"));
+    if (!prompt) {
+        DWORD error = GetLastError();
+        FreeLibrary(credui);
+        return HRESULT_FROM_WIN32(error);
+    }
+
+    RA3_CREDUI_INFOW info{};
     info.cbSize = sizeof(info);
     info.pszCaptionText = L"Remote A3";
     info.pszMessageText = L"Digite o PIN do certificado A3 remoto";
@@ -317,7 +372,7 @@ static HRESULT PromptForPin(KeyContext& key, DWORD flags)
     wchar_t password[CREDUI_MAX_PASSWORD_LENGTH + 1]{};
     BOOL save = FALSE;
 
-    DWORD result = CredUIPromptForCredentialsW(
+    DWORD result = prompt(
         &info,
         L"RemoteA3",
         nullptr,
@@ -331,11 +386,13 @@ static HRESULT PromptForPin(KeyContext& key, DWORD flags)
 
     if (result != NO_ERROR) {
         SecureZeroMemory(password, sizeof(password));
+        FreeLibrary(credui);
         return HRESULT_FROM_WIN32(result);
     }
 
     key.cachedPin = password;
     SecureZeroMemory(password, sizeof(password));
+    FreeLibrary(credui);
     return S_OK;
 }
 
@@ -701,4 +758,3 @@ extern "C" HRESULT WINAPI GetKeyStorageInterface(LPCWSTR, NCRYPT_KEY_STORAGE_FUN
     *table = &g_table;
     return S_OK;
 }
-
