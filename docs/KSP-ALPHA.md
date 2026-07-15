@@ -25,6 +25,8 @@ Esta versao adiciona um provedor CNG experimental chamado `Remote A3 Key Storage
 
 Ou use o workflow `native-ksp` no GitHub Actions.
 
+Se o setup ja incluir `native\x64\Release\RemoteA3Ksp.dll` e `RemoteA3KspAdmin.exe`, nao e necessario compilar antes de instalar o KSP.
+
 ## Instalar no PC atual
 
 ```powershell
@@ -45,4 +47,3 @@ Teste:
 ```powershell
 & "$env:LOCALAPPDATA\RemoteA3\bin\remote-a3-test-virtual-cert.cmd" -Thumbprint "THUMBPRINT"
 ```
-
