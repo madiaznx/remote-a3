@@ -48,6 +48,14 @@ Se o PC cliente conseguir listar certificados com usuario e senha, mas o KSP rec
 
 Esse script para a tarefa antiga, registra o agente com autenticacao `Ntlm`, inicia a tarefa de novo e testa `http://localhost:28765/health`.
 
+Sem abrir PowerShell no computador com token, use o atalho **Remote A3 Token Host NTLM Script** no menu iniciar ou execute o arquivo:
+
+```cmd
+%LOCALAPPDATA%\RemoteA3\bin\remote-a3-token-host-ntlm-silent.cmd
+```
+
+Ele roda oculto, pede UAC se precisar e grava o resultado em `%LOCALAPPDATA%\RemoteA3\logs\token-host-ntlm.log`.
+
 Para procurar uma porta livre considerando varios computadores do dominio:
 
 ```powershell
@@ -149,6 +157,8 @@ Nota: a partir da `0.4.3`, o KSP mantem o mesmo corpo JSON durante o handshake a
 Nota: a partir da `0.4.4`, o setup inclui `remote-a3-token-host-ntlm.cmd` para reconfigurar rapidamente o computador com token em `Ntlm`, reiniciando a tarefa agendada e testando o `/health` local.
 
 Nota: a partir da `0.4.5`, esse mesmo reparo tambem encerra automaticamente um processo antigo do Remote A3 que ainda esteja segurando a porta do agente.
+
+Nota: a partir da `0.4.6`, o setup inclui um modo de script sem terminal (`remote-a3-token-host-ntlm-silent.cmd`) para configurar o computador com token sem abrir PowerShell interativo.
 
 Fluxo no PC atual:
 
