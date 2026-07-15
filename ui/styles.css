@@ -28,6 +28,12 @@ button:hover {
   border-color: #486a9f;
 }
 
+button:disabled {
+  color: #8792a4;
+  cursor: default;
+  background: #f4f6fa;
+}
+
 .shell {
   width: min(1120px, calc(100vw - 32px));
   margin: 0 auto;
@@ -167,6 +173,17 @@ th {
 
 .link-button {
   background: transparent;
+}
+
+.import-button {
+  background: #244f86;
+  border-color: #244f86;
+  color: #ffffff;
+}
+
+.import-button:hover {
+  border-color: #163963;
+  background: #1d4373;
 }
 
 @media (max-width: 760px) {
