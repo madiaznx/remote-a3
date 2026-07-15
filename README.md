@@ -130,6 +130,8 @@ Nota: a partir da `0.3.8`, o prompt local tenta usar o modo de senha/PIN apenas,
 
 Nota: a partir da `0.3.9`, quando o certificado virtual e importado com `-Credential`, a credencial de rede do agente remoto e salva no Gerenciador de Credenciais do Windows e reutilizada pelo KSP durante a assinatura. O PIN do A3 continua sendo solicitado no PC atual.
 
+Nota: a partir da `0.4.0`, o importador evita sintaxe C# moderna no bloco `Add-Type`, mantendo compatibilidade com o compilador padrao do Windows PowerShell.
+
 Fluxo no PC atual:
 
 1. Instalar o setup que inclui os binarios nativos `RemoteA3Ksp.dll` e `RemoteA3KspAdmin.exe`.
