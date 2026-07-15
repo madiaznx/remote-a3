@@ -1,9 +1,11 @@
 [CmdletBinding()]
 param(
-    [ValidateSet("setup", "status", "status-json", "ui", "sync", "install-ksp", "agent", "test-ksp", "test-cert", "test-cert-32")]
+    [ValidateSet("setup", "status", "status-json", "available-json", "import", "ui", "sync", "install-ksp", "agent", "test-ksp", "test-cert", "test-cert-32")]
     [string]$Command = "status",
 
-    [string]$Thumbprint
+    [string]$Thumbprint,
+
+    [string]$AgentUrl
 )
 
 Set-StrictMode -Version 2.0
@@ -144,6 +146,22 @@ switch ($Command) {
     }
     "status-json" {
         Get-RemoteA3Status | ConvertTo-Json -Depth 10
+    }
+    "available-json" {
+        $items = @(& (Join-Path $PSScriptRoot "Get-RemoteA3AvailableCertificates.ps1"))
+        if ($items.Count -eq 0) {
+            "[]"
+        }
+        else {
+            $items | ConvertTo-Json -Depth 8
+        }
+    }
+    "import" {
+        if ([string]::IsNullOrWhiteSpace($AgentUrl) -or [string]::IsNullOrWhiteSpace($Thumbprint)) {
+            throw "Informe -AgentUrl e -Thumbprint."
+        }
+
+        & (Join-Path $PSScriptRoot "Import-RemoteA3DiscoveredCertificate.ps1") -AgentUrl $AgentUrl -Thumbprint $Thumbprint -PromptForCredential
     }
     "ui" {
         $installRoot = Get-InstallRoot
