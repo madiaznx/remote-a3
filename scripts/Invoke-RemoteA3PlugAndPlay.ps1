@@ -145,9 +145,13 @@ try {
     }
 
     if (-not $SkipAutoImport) {
-        $registerImportPath = Join-Path $scriptDir "Register-RemoteA3AutoImport.ps1"
-        $results.autoImport = Invoke-RemoteA3SetupStep -Name "AutoImport" -ScriptBlock {
-            & $registerImportPath -StartNow
+        $results.autoImport = Invoke-RemoteA3SetupStep -Name "ManualImport" -ScriptBlock {
+            Unregister-ScheduledTask -TaskName "RemoteA3 Auto Import" -Confirm:$false -ErrorAction SilentlyContinue
+            [pscustomobject]@{
+                Mode = "Manual"
+                ImportButton = $true
+                TaskRemoved = $true
+            }
         }
     }
 
