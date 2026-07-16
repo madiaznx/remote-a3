@@ -24,7 +24,7 @@ param(
 
     [int]$AdvertisementPort = 28764,
 
-    [int]$AdvertisementIntervalSeconds = 30,
+    [int]$AdvertisementIntervalSeconds = 3,
 
     [string]$TaskName = "RemoteA3 Agent",
 
