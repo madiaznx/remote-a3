@@ -39,20 +39,35 @@ function Get-AgentHostName {
     }
 }
 
-function Test-CertificateImported {
+function Get-LocalCertificateState {
     param([string]$Thumbprint)
 
     $cleanThumbprint = ($Thumbprint -replace "\s", "").ToUpperInvariant()
     $keyConfig = Join-Path $env:LOCALAPPDATA "RemoteA3\keys\remote-a3-$cleanThumbprint.remotea3"
-    if (Test-Path -LiteralPath $keyConfig) {
-        return $true
-    }
 
     $store = New-Object System.Security.Cryptography.X509Certificates.X509Store($StoreName, $StoreLocation)
     $store.Open([System.Security.Cryptography.X509Certificates.OpenFlags]::ReadOnly)
     try {
         $existing = @($store.Certificates | Where-Object { (($_.Thumbprint -replace "\s", "").ToUpperInvariant()) -eq $cleanThumbprint }) | Select-Object -First 1
-        return ($null -ne $existing -and $existing.FriendlyName -like "Remote A3*")
+        if ($null -ne $existing -and $existing.HasPrivateKey -and $existing.FriendlyName -notlike "Remote A3*") {
+            Remove-Item -LiteralPath $keyConfig -Force -ErrorAction SilentlyContinue
+            return [pscustomobject]@{
+                Imported       = $false
+                InstalledLocal = $true
+            }
+        }
+
+        if (Test-Path -LiteralPath $keyConfig) {
+            return [pscustomobject]@{
+                Imported       = $true
+                InstalledLocal = $false
+            }
+        }
+
+        return [pscustomobject]@{
+            Imported       = ($null -ne $existing -and $existing.FriendlyName -like "Remote A3*")
+            InstalledLocal = $false
+        }
     }
     finally {
         $store.Close()
@@ -129,6 +144,7 @@ try {
             }
 
             $key = "$agentUrl|$thumbprint"
+            $localState = Get-LocalCertificateState -Thumbprint $thumbprint
             $seen[$key] = [pscustomobject]@{
                 MachineName = $machineName
                 SourceIp = $remote.Address.ToString()
@@ -140,7 +156,8 @@ try {
                 NotAfter = [string]$certificate.NotAfter
                 LikelyA3 = [bool]$certificate.LikelyA3
                 HasPrivateKey = [bool]$certificate.HasPrivateKey
-                Imported = Test-CertificateImported -Thumbprint $thumbprint
+                Imported = [bool]$localState.Imported
+                InstalledLocal = [bool]$localState.InstalledLocal
                 DiscoveryError = $null
             }
         }
