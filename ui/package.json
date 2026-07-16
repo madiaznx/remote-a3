@@ -1,6 +1,6 @@
 {
   "name": "remote-a3-ui",
-  "version": "0.5.1",
+  "version": "0.5.2",
   "private": true,
   "description": "Remote A3 desktop interface",
   "main": "main.js",
