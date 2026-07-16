@@ -183,6 +183,10 @@ Nota: a partir da `0.5.0`, a interface mostra certificados encontrados por anunc
 
 Nota: a partir da `0.5.1`, o PC cliente nao fica ouvindo em segundo plano. Os computadores com certificado anunciam a cada 3 segundos, e a interface procura certificados somente ao abrir ou ao clicar **Atualizar**, aguardando ate 10 segundos.
 
+Nota: a partir da `0.5.2`, certificados ja instalados localmente com chave privada aparecem como **Instalado** na interface, sem botao **Importar** e sem tentativa de substituir o provider local por Remote A3.
+
+Tambem a partir da `0.5.2`, erros exibidos na interface ficam resumidos; detalhes completos sao gravados em `%LOCALAPPDATA%\RemoteA3\logs\ui-errors.log`.
+
 Fluxo no PC atual:
 
 1. Instalar o setup que inclui os binarios nativos `RemoteA3Ksp.dll` e `RemoteA3KspAdmin.exe`.
