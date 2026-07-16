@@ -26,6 +26,11 @@ function setText(id, value) {
   document.getElementById(id).textContent = value;
 }
 
+function showError(result, fallback) {
+  const suffix = result && result.logPath ? " Detalhes gravados no log." : "";
+  setText("subtitle", `${(result && result.error) || fallback}${suffix}`);
+}
+
 function renderStatus(data) {
   const certs = Array.isArray(data.VirtualCertificates) ? data.VirtualCertificates : [];
   state.logs = data.Logs || {};
@@ -47,11 +52,11 @@ function renderAvailable(certs) {
 
   for (const cert of state.available) {
     const row = document.createElement("tr");
-    const canImport = cert.Thumbprint && cert.AgentUrl && !cert.Imported;
+    const canImport = cert.Thumbprint && cert.AgentUrl && !cert.Imported && !cert.InstalledLocal;
     const button = canImport
       ? `<button class="import-button" type="button" data-agent="${encodeURIComponent(cert.AgentUrl)}" data-thumbprint="${encodeURIComponent(cert.Thumbprint)}">Importar</button>`
-      : `<button type="button" disabled>${cert.Imported ? "Importado" : "Indisponivel"}</button>`;
-    const status = cert.DiscoveryError ? "Credencial necessaria" : cert.Imported ? "Importado" : "Disponivel";
+      : `<button type="button" disabled>${cert.InstalledLocal ? "Instalado" : cert.Imported ? "Importado" : "Indisponivel"}</button>`;
+    const status = cert.DiscoveryError ? "Credencial necessaria" : cert.InstalledLocal ? "Instalado local" : cert.Imported ? "Importado" : "Disponivel";
 
     row.innerHTML = `
       <td>
@@ -82,7 +87,7 @@ async function refresh() {
   document.getElementById("refreshButton").disabled = true;
   const result = await window.remoteA3.status();
   if (!result.ok) {
-    setText("subtitle", result.error || "Falha ao carregar status.");
+    showError(result, "Falha ao carregar status.");
     document.getElementById("refreshButton").disabled = false;
     return;
   }
@@ -95,14 +100,18 @@ async function refresh() {
     renderAvailable(available.data);
     setText("subtitle", `${result.data.ComputerName || "-"} - Remote A3 ${result.data.Version || ""}`);
   } else {
-    setText("subtitle", available.error || "Falha ao descobrir certificados.");
+    showError(available, "Falha ao descobrir certificados.");
   }
   document.getElementById("refreshButton").disabled = false;
 }
 
 async function setup() {
   setText("subtitle", "Reparando configuracao...");
-  await window.remoteA3.setup();
+  const result = await window.remoteA3.setup();
+  if (!result.ok) {
+    showError(result, "Falha ao reparar configuracao.");
+    return;
+  }
   await refresh();
 }
 
@@ -110,7 +119,7 @@ async function importCertificate(certificate) {
   setText("subtitle", "Importando certificado...");
   const result = await window.remoteA3.importCertificate(certificate);
   if (!result.ok) {
-    setText("subtitle", result.stderr || result.error || "Falha ao importar certificado.");
+    showError(result, "Falha ao importar certificado.");
     return;
   }
 
@@ -119,6 +128,7 @@ async function importCertificate(certificate) {
 
 document.getElementById("refreshButton").addEventListener("click", refresh);
 document.getElementById("setupButton").addEventListener("click", setup);
+document.getElementById("openUiLog").addEventListener("click", () => window.remoteA3.openPath(state.logs.Ui));
 document.getElementById("openKspLog").addEventListener("click", () => window.remoteA3.openPath(state.logs.Ksp));
 document.getElementById("openSetupLog").addEventListener("click", () => window.remoteA3.openPath(state.logs.PlugAndPlay));
 
