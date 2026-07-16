@@ -1,9 +1,30 @@
 const { app, BrowserWindow, ipcMain, shell } = require("electron");
 const { execFile } = require("node:child_process");
 const path = require("node:path");
+const fs = require("node:fs");
 
 function getRemoteA3ScriptPath() {
   return path.join(process.env.LOCALAPPDATA || "", "RemoteA3", "scripts", "RemoteA3.ps1");
+}
+
+function getLogPath() {
+  return path.join(process.env.LOCALAPPDATA || "", "RemoteA3", "logs", "ui-errors.log");
+}
+
+function writeUiLog(title, detail) {
+  try {
+    const logPath = getLogPath();
+    fs.mkdirSync(path.dirname(logPath), { recursive: true });
+    const line = [
+      new Date().toISOString(),
+      title,
+      typeof detail === "string" ? detail : JSON.stringify(detail, null, 2),
+      ""
+    ].join("\n");
+    fs.appendFileSync(logPath, line, "utf8");
+  } catch {
+    // Logging must never break the UI.
+  }
 }
 
 function runRemoteA3(args, options = {}) {
@@ -45,29 +66,41 @@ app.whenReady().then(() => {
   ipcMain.handle("remote-a3:status", async () => {
     const result = await runRemoteA3(["status-json"]);
     if (!result.ok) {
-      return { ok: false, error: result.stderr || result.error || "Falha ao ler status." };
+      writeUiLog("status failed", result);
+      return { ok: false, error: "Nao foi possivel ler o status do Remote A3.", logPath: getLogPath() };
     }
 
     try {
       return { ok: true, data: JSON.parse(result.stdout) };
     } catch (error) {
-      return { ok: false, error: error.message, raw: result.stdout };
+      writeUiLog("status json parse failed", { error: error.message, raw: result.stdout });
+      return { ok: false, error: "Nao foi possivel interpretar o status do Remote A3.", logPath: getLogPath() };
     }
   });
 
-  ipcMain.handle("remote-a3:setup", async () => runRemoteA3(["setup"]));
+  ipcMain.handle("remote-a3:setup", async () => {
+    const result = await runRemoteA3(["setup"]);
+    if (!result.ok) {
+      writeUiLog("setup failed", result);
+      return { ok: false, error: "Nao foi possivel reparar a configuracao.", logPath: getLogPath() };
+    }
+
+    return { ok: true };
+  });
 
   ipcMain.handle("remote-a3:available", async () => {
     const result = await runRemoteA3(["available-json"], { timeout: 15000 });
     if (!result.ok) {
-      return { ok: false, error: result.stderr || result.error || "Falha ao descobrir certificados." };
+      writeUiLog("available failed", result);
+      return { ok: false, error: "Nao foi possivel procurar certificados na rede.", logPath: getLogPath() };
     }
 
     try {
       const parsed = result.stdout.trim() ? JSON.parse(result.stdout) : [];
       return { ok: true, data: Array.isArray(parsed) ? parsed : [parsed] };
     } catch (error) {
-      return { ok: false, error: error.message, raw: result.stdout };
+      writeUiLog("available json parse failed", { error: error.message, raw: result.stdout });
+      return { ok: false, error: "Nao foi possivel interpretar a lista de certificados.", logPath: getLogPath() };
     }
   });
 
@@ -76,10 +109,20 @@ app.whenReady().then(() => {
       return { ok: false, error: "Certificado invalido." };
     }
 
-    return runRemoteA3(["import", "-AgentUrl", certificate.AgentUrl, "-Thumbprint", certificate.Thumbprint], {
+    const result = await runRemoteA3(["import", "-AgentUrl", certificate.AgentUrl, "-Thumbprint", certificate.Thumbprint], {
       windowsHide: false,
       timeout: 180000
     });
+
+    if (!result.ok) {
+      writeUiLog("import failed", {
+        certificate,
+        result
+      });
+      return { ok: false, error: "Nao foi possivel importar este certificado.", logPath: getLogPath() };
+    }
+
+    return { ok: true };
   });
 
   ipcMain.handle("remote-a3:open-path", async (_event, targetPath) => {
