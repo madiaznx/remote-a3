@@ -79,15 +79,17 @@ function renderAvailable(certs) {
 
 async function refresh() {
   setText("subtitle", "Atualizando...");
+  document.getElementById("refreshButton").disabled = true;
   const result = await window.remoteA3.status();
   if (!result.ok) {
     setText("subtitle", result.error || "Falha ao carregar status.");
+    document.getElementById("refreshButton").disabled = false;
     return;
   }
 
   renderStatus(result.data);
 
-  setText("subtitle", "Procurando certificados anunciados...");
+  setText("subtitle", "Procurando certificados anunciados por ate 10 segundos...");
   const available = await window.remoteA3.available();
   if (available.ok) {
     renderAvailable(available.data);
@@ -95,6 +97,7 @@ async function refresh() {
   } else {
     setText("subtitle", available.error || "Falha ao descobrir certificados.");
   }
+  document.getElementById("refreshButton").disabled = false;
 }
 
 async function setup() {
@@ -116,9 +119,7 @@ async function importCertificate(certificate) {
 
 document.getElementById("refreshButton").addEventListener("click", refresh);
 document.getElementById("setupButton").addEventListener("click", setup);
-document.getElementById("openAutoImportLog").addEventListener("click", () => window.remoteA3.openPath(state.logs.AutoImport));
 document.getElementById("openKspLog").addEventListener("click", () => window.remoteA3.openPath(state.logs.Ksp));
 document.getElementById("openSetupLog").addEventListener("click", () => window.remoteA3.openPath(state.logs.PlugAndPlay));
 
 refresh();
-setInterval(refresh, 30000);
