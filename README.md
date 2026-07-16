@@ -24,12 +24,11 @@ A partir da `0.4.8`, o instalador configura o Remote A3 automaticamente:
 - registra o KSP local, incluindo 64-bit e 32-bit;
 - sobe o agente local em `Ntlm` para liberar certificados com chave privada deste computador;
 - cria a tarefa `RemoteA3 Agent`;
-- cria a tarefa `RemoteA3 Auto Import`;
-- importa automaticamente certificados anunciados por outros computadores da intranet;
+- descobre certificados anunciados por outros computadores quando a interface abre ou quando o usuario clica **Atualizar**;
 - cria apenas um comando publico: `%LOCALAPPDATA%\RemoteA3\bin\remote-a3.cmd`;
 - cria a interface **Remote A3** no menu iniciar para ver de qual computador/agente veio cada certificado.
 
-O intervalo de 30 segundos e apenas o anuncio automatico entre computadores. O usuario nao precisa rodar recebedor manual.
+O intervalo de 3 segundos e apenas o anuncio automatico feito pelos computadores que tem certificado. O computador cliente nao fica escutando em segundo plano; ele procura por ate 10 segundos ao abrir a interface ou clicar **Atualizar**.
 
 ## Instalacao automatica nos computadores com A3
 
@@ -181,6 +180,8 @@ Nota: a partir da `0.4.8`, o fluxo passa a ser plug-and-play e inclui a interfac
 Nota: a partir da `0.4.9`, o setup plug-and-play registra a importacao automatica mesmo quando uma etapa anterior falha, por exemplo DLL do KSP em uso ate reiniciar o Windows.
 
 Nota: a partir da `0.5.0`, a interface mostra certificados encontrados por anuncio/exportacao e usa um botao **Importar** por certificado. A importacao tenta credenciais atuais primeiro e pede credencial do Windows se o agente remoto responder `401`.
+
+Nota: a partir da `0.5.1`, o PC cliente nao fica ouvindo em segundo plano. Os computadores com certificado anunciam a cada 3 segundos, e a interface procura certificados somente ao abrir ou ao clicar **Atualizar**, aguardando ate 10 segundos.
 
 Fluxo no PC atual:
 
