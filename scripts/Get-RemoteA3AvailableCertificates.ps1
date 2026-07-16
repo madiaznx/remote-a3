@@ -2,7 +2,7 @@
 param(
     [int]$AdvertisementPort = 28764,
 
-    [int]$Seconds = 5,
+    [int]$Seconds = 10,
 
     [ValidateSet("CurrentUser", "LocalMachine")]
     [string]$StoreLocation = "CurrentUser",
