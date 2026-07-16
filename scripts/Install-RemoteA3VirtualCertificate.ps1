@@ -81,7 +81,6 @@ $keyConfig = @(
     "credentialTarget=$credentialTarget"
     "publicCertificateBase64=$($remoteCertificate.PublicCertificateBase64)"
 )
-Set-Content -LiteralPath $keyConfigPath -Value $keyConfig -Encoding ASCII
 
 $pinvoke = @'
 using System;
@@ -254,10 +253,27 @@ try {
     if ($existing.HasPrivateKey -and
         -not [string]::IsNullOrWhiteSpace($existingProviderName) -and
         $existingProviderName -ne $ProviderName) {
-        throw "Certificado $cleanThumbprint ja existe neste computador com chave privada local/provider '$existingProviderName'. Nao vou substituir por Remote A3 automaticamente."
+        Remove-Item -LiteralPath $keyConfigPath -Force -ErrorAction SilentlyContinue
+
+        [pscustomobject]@{
+            Imported       = $false
+            InstalledLocal = $true
+            Subject        = $existing.Subject
+            Thumbprint     = $cleanThumbprint
+            StoreLocation  = $StoreLocation
+            StoreName      = $StoreName
+            ProviderName   = $existingProviderName
+            ContainerName  = $null
+            KeyConfigPath  = $null
+            CredentialTarget = $credentialTarget
+            CredentialSaved = $credentialSaved
+            Note           = "Certificado ja instalado localmente com chave privada. Nao foi substituido por Remote A3."
+        }
+        return
     }
 
     [RemoteA3CertLink]::SetCngProvider($existing, $containerName, $ProviderName)
+    Set-Content -LiteralPath $keyConfigPath -Value $keyConfig -Encoding ASCII
 }
 finally {
     $store.Close()
