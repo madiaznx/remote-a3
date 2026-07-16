@@ -17,7 +17,7 @@ param(
 
     [int]$AdvertisementPort = 28764,
 
-    [int]$AdvertisementIntervalSeconds = 30
+    [int]$AdvertisementIntervalSeconds = 3
 )
 
 Set-StrictMode -Version 2.0
