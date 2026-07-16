@@ -133,6 +133,7 @@ function Get-RemoteA3Status {
             PlugAndPlay = Join-Path $installRoot "logs\plug-and-play.log"
             AutoImport = Join-Path $installRoot "logs\auto-import.log"
             Ksp = Join-Path $installRoot "logs\ksp.log"
+            Ui = Join-Path $installRoot "logs\ui-errors.log"
         }
     }
 }
